@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env
+node_modules/
+dist/
+build/
+*.log
+/models/
+data/generated/
+.pio/
+android/local.properties
+android/.gradle/

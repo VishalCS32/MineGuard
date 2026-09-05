@@ -1,0 +1,107 @@
+# SUBSIDENCE-NET -- self-hosted stack. `make up` brings the whole system online.
+# Runs identically on a laptop for a demo and on a VPS for a deployment.
+
+name: subsidence-net
+
+services:
+  db:
+    # timescaledb-ha bundles PostGIS, so time-series and geospatial live in one DB.
+    image: timescale/timescaledb-ha:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-subnet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-subnet}
+      POSTGRES_DB: ${POSTGRES_DB:-subnet}
+    volumes:
+      - db_data:/home/postgres/pgdata/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-subnet} -d ${POSTGRES_DB:-subnet}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt_data:/mosquitto/data
+    ports:
+      - "${MQTT_PORT:-1883}:1883"     # gateways
+      - "${MQTT_WS_PORT:-9001}:9001"  # browser/debug clients
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -t '$$SYS/#' -C 1 -W 3 -q 1 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      # Repo root as context so the image can install packages/subnet-proto,
+      # the codec shared with the simulator.
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-subnet}:${POSTGRES_PASSWORD:-subnet}@db:5432/${POSTGRES_DB:-subnet}
+      MQTT_HOST: mqtt
+      REDIS_URL: redis://redis:6379/0
+      ML_SERVICE_URL: http://ml:8100
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db: {condition: service_healthy}
+      mqtt: {condition: service_started}
+      redis: {condition: service_healthy}
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+
+  ml:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-subnet}:${POSTGRES_PASSWORD:-subnet}@db:5432/${POSTGRES_DB:-subnet}
+      MODEL_DIR: /models
+    ports:
+      - "${ML_PORT:-8100}:8100"
+    depends_on:
+      db: {condition: service_healthy}
+    volumes:
+      - ./ml:/app
+      - model_data:/models
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./web
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    environment:
+      VITE_API_URL: http://localhost:${API_PORT:-8000}
+    depends_on:
+      - api
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  mqtt_data:
+  model_data:

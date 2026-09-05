@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "subnet-proto"
+version = "1.0.0"
+description = "SUBSIDENCE-NET mesh wire protocol codec, shared by the backend and the simulator"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+include = ["subnet_proto*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
