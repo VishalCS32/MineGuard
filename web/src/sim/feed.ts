@@ -1,0 +1,457 @@
+/**
+ * Live data feed driving the dashboard.
+ *
+ * Runs the real subsidence physics on a compressed clock so a multi-week trough
+ * develops in a couple of minutes on screen. Every quantity shown is derived,
+ * never invented: tilt is the gradient of the subsidence surface, crack width
+ * follows tensile strain, hop counts come from an actual shortest-path solve over
+ * the radio graph, and alerts fire from threshold crossings on those values.
+ *
+ * `DataSource` is the seam. When the FastAPI backend is up, `LiveSocketSource`
+ * implements the same interface against the WebSocket and nothing else changes.
+ */
+import {
+  DEFAULT_PANEL, classifyDamage, evaluate, radiusOfInfluence, type PanelGeometry,
+} from './physics';
+import { GATEWAY_LOCAL, buildField, type NodeSpec } from './field';
+import type {
+  AlertItem, Kpis, MeshLink, NodeReading, PredictionPoint, RiskLevel, Snapshot, TrendPoint,
+} from '@/data/types';
+
+/** Disruptive-tilt limit, 10 mm/m expressed in degrees -- the NCB-style bound at
+ *  which services, drainage and structures start to suffer. */
+export const TILT_THRESHOLD_DEG = 0.6;
+export const CRACK_THRESHOLD_MM = 3.0;
+const MM_PER_M_TO_DEG = 180 / Math.PI / 1000;
+
+/** Panel is supercritical across the face, so the trough develops fully. */
+const DEMO_PANEL: PanelGeometry = { ...DEFAULT_PANEL, yMin: -200, yMax: 200 };
+const FACE_ADVANCE_M_PER_DAY = 12;
+const MAX_LINK_RANGE_M = 240;
+/**
+ * The demo runs on a compressed but *internally consistent* clock: one tick is
+ * fifteen simulated minutes, delivered every 250 ms. Timestamps on the charts are
+ * simulated time, not wall-clock time, so the 1H / 6H / 24H / 7D range tabs mean
+ * exactly what they say instead of labelling three minutes of real time as a week.
+ */
+const TICK_MINUTES = 15;
+const DAY_PER_TICK = TICK_MINUTES / 1440;
+/** Seven days of 15-minute samples, so the widest range tab is fully backed. */
+const HISTORY_POINTS = 700;
+/** Opening day: trough developed, pothole part-grown, alerts already standing. */
+const START_DAY = 40;
+
+/** A pothole opening over the goaf, well behind the working face. */
+const POTHOLE = {
+  startDay: 39,
+  // Sudden subsidence over a goaf void develops in hours to a couple of days;
+  // this is the conservative end of that, and it is what visibly moves on screen.
+  rampDays: 2.5,
+  depthMm: 820,
+  sigmaM: 92,
+  yOffset: 40,
+};
+
+export interface DataSource {
+  subscribe(fn: (s: Snapshot) => void): () => void;
+  history(addr: number): TrendPoint[];
+  start(): void;
+  stop(): void;
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+function riskBand(score: number): RiskLevel {
+  if (score < 0.35) return 'low';
+  if (score < 0.6) return 'medium';
+  if (score < 0.85) return 'high';
+  return 'critical';
+}
+
+/** Deterministic value noise, so the feed is reproducible across reloads. */
+function noise(seed: number, t: number): number {
+  const x = Math.sin(seed * 127.1 + t * 0.37) * 43758.5453;
+  return (x - Math.floor(x)) * 2 - 1;
+}
+
+export class SimulatedSource implements DataSource {
+  private readonly nodes: NodeSpec[];
+  private readonly listeners = new Set<(s: Snapshot) => void>();
+  private readonly trend = new Map<number, TrendPoint[]>();
+  private readonly alerts: AlertItem[] = [];
+  private readonly lastAlertAt = new Map<number, number>();
+  private readonly offline = new Set<number>();
+  private readonly staticLinks: MeshLink[];
+  private timer: number | null = null;
+  private day = START_DAY;
+  private tick = 0;
+  private startedAt = Date.now();
+  /** Wall-clock instant that simulated day 0 maps to, chosen so the opening
+   *  moment of the demo reads as "now". */
+  private readonly simEpoch0 = Date.now() - START_DAY * 86_400_000;
+
+  constructor(
+    private readonly panel: PanelGeometry = DEMO_PANEL,
+    private readonly dayPerTick = DAY_PER_TICK,
+    private readonly intervalMs = 250,
+  ) {
+    this.nodes = buildField(panel, 5, 3, MAX_LINK_RANGE_M);
+    // Two nodes are down from the start -- a real field always has some.
+    this.offline.add(this.nodes[2].addr);
+    this.offline.add(this.nodes[this.nodes.length - 3].addr);
+    this.staticLinks = this.buildLinks();
+    this.nodes.forEach((n) => this.trend.set(n.addr, []));
+    this.prefill();
+  }
+
+  /**
+   * Backfill history so the dashboard opens on a field with a past.
+   *
+   * An operator arriving at a monitoring screen expects to see where the ground
+   * has been, not an empty chart that fills in over the next two minutes. This
+   * replays the same physics backwards from the opening day and seeds the alert
+   * log from the crossings it finds along the way.
+   */
+  private prefill() {
+    const { hops } = this.solveRoutes();
+    const steps = HISTORY_POINTS;
+    for (let i = steps; i >= 0; i--) {
+      const day = Math.max(0, this.day - i * this.dayPerTick);
+      const t = this.simTime(day);
+      const nodes = this.nodes.map((s) => this.read(s, day, hops.get(s.addr) ?? 0));
+      this.pushHistory(nodes, t);
+      // Sample the alert log rather than firing every step -- the cooldown in
+      // raiseAlerts already enforces this, but stepping keeps timestamps spread.
+      if (i % 61 === 0) this.raiseAlerts(nodes, t);
+    }
+  }
+
+  // ------------------------------------------------------------- topology
+  private buildLinks(): MeshLink[] {
+    const links: MeshLink[] = [];
+    for (let i = 0; i < this.nodes.length; i++) {
+      for (let j = i + 1; j < this.nodes.length; j++) {
+        const a = this.nodes[i];
+        const b = this.nodes[j];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (d > MAX_LINK_RANGE_M) continue;
+        // Ground-level log-distance path loss, 865 MHz.
+        const rssi = 22 - 43 - 10 * 3.4 * Math.log10(Math.max(1, d));
+        links.push({ a: a.addr, b: b.addr, rssi, onRoute: false });
+      }
+    }
+    return links;
+  }
+
+  /**
+   * Shortest-path solve from the gateway over live links.
+   * Returns hop count per node and the set of links carrying traffic home --
+   * the same computation the firmware's flood converges on, and what makes a
+   * node failure visibly re-route on the map instead of silently degrading.
+   */
+  private solveRoutes(): { hops: Map<number, number>; routeLinks: Set<string> } {
+    const alive = (addr: number) => !this.offline.has(addr);
+    const adj = new Map<number, { to: number; key: string }[]>();
+    for (const n of this.nodes) adj.set(n.addr, []);
+    for (const l of this.staticLinks) {
+      if (!alive(l.a) || !alive(l.b)) continue;
+      const key = `${Math.min(l.a, l.b)}-${Math.max(l.a, l.b)}`;
+      adj.get(l.a)!.push({ to: l.b, key });
+      adj.get(l.b)!.push({ to: l.a, key });
+    }
+
+    // Seed the frontier with nodes that can reach the gateway directly.
+    const hops = new Map<number, number>();
+    const routeLinks = new Set<string>();
+    const queue: number[] = [];
+    for (const n of this.nodes) {
+      if (!alive(n.addr)) continue;
+      const d = Math.hypot(n.x - GATEWAY_LOCAL.x, n.y - GATEWAY_LOCAL.y);
+      if (d <= MAX_LINK_RANGE_M) {
+        hops.set(n.addr, 1);
+        queue.push(n.addr);
+      }
+    }
+    for (let head = 0; head < queue.length; head++) {
+      const cur = queue[head];
+      for (const { to, key } of adj.get(cur) ?? []) {
+        if (hops.has(to)) continue;
+        hops.set(to, hops.get(cur)! + 1);
+        routeLinks.add(key);
+        queue.push(to);
+      }
+    }
+    return { hops, routeLinks };
+  }
+
+  // -------------------------------------------------------------- physics
+  private faceX(day: number): number {
+    return Math.min(this.panel.xStart + FACE_ADVANCE_M_PER_DAY * day, this.panel.xEnd);
+  }
+
+  private potholeCentre(): { cx: number; cy: number } {
+    // Anchored to the goaf, never ahead of the face -- unmined ground cannot
+    // collapse into a void that does not exist yet.
+    const goafEnd = this.faceX(POTHOLE.startDay);
+    return { cx: this.panel.xStart + 0.45 * (goafEnd - this.panel.xStart), cy: POTHOLE.yOffset };
+  }
+
+  private potholeAt(x: number, y: number, day: number) {
+    const ramp = clamp((day - POTHOLE.startDay) / POTHOLE.rampDays, 0, 1);
+    if (ramp <= 0) return { sub: 0, tiltX: 0, tiltY: 0, strain: 0, rate: 0 };
+    const { cx, cy } = this.potholeCentre();
+    const dx = x - cx;
+    const dy = y - cy;
+    const s2 = POTHOLE.sigmaM ** 2;
+    const bump = Math.exp(-(dx * dx + dy * dy) / (2 * s2));
+    const depth = POTHOLE.depthMm * ramp;
+    const b = 0.4 * this.panel.seamDepthM;
+    return {
+      sub: depth * bump,
+      tiltX: (-depth * bump * dx) / s2,
+      tiltY: (-depth * bump * dy) / s2,
+      strain: b * depth * bump * ((dx * dx) / (s2 * s2) - 1 / s2),
+      rate: ramp < 1 ? (POTHOLE.depthMm * bump) / (POTHOLE.rampDays * 24) : 0,
+    };
+  }
+
+  private read(spec: NodeSpec, day: number, hops: number): NodeReading {
+    const faceX = this.faceX(day);
+    const completion = 1 - Math.exp(-0.35 * Math.max(day, 0));
+    const mv = evaluate(this.panel, spec.x, spec.y, faceX, completion);
+    const ph = this.potholeAt(spec.x, spec.y, day);
+
+    const tiltX = mv.tiltX + ph.tiltX;
+    const tiltY = mv.tiltY + ph.tiltY;
+    const strain = mv.strain + ph.strain;
+    const tiltMagnitude = Math.hypot(tiltX, tiltY);
+
+    const jitter = noise(spec.addr, this.tick);
+    const tiltPitchDeg = tiltX * MM_PER_M_TO_DEG + jitter * 0.004;
+    const tiltRollDeg = tiltY * MM_PER_M_TO_DEG + noise(spec.addr + 7, this.tick) * 0.004;
+    const tiltDeg = Math.hypot(tiltPitchDeg, tiltRollDeg);
+
+    // Cracks open in tension only; compression cannot part a bonded gauge.
+    const crackMm = clamp(Math.max(0, strain - 1.0) * 0.35, 0, 12);
+    // Ambient floor plus energy radiated by active settlement.
+    const vibrationMg = clamp(
+      12 + Math.abs(jitter) * 6 + ph.rate * 2.2 + Math.abs(mv.tilt) * 0.9, 0, 999,
+    );
+
+    const riskScore = clamp(
+      Math.max(tiltDeg / TILT_THRESHOLD_DEG, crackMm / CRACK_THRESHOLD_MM) * 0.92 +
+        Math.min(vibrationMg / 400, 1) * 0.08,
+      0,
+      1.35,
+    );
+
+    const online = !this.offline.has(spec.addr);
+    return {
+      addr: spec.addr,
+      id: spec.id,
+      label: spec.label,
+      lat: spec.lat,
+      lon: spec.lon,
+      x: spec.x,
+      y: spec.y,
+      isEdge: spec.isEdge,
+      zone: spec.zone,
+      online,
+      tiltPitchDeg,
+      tiltRollDeg,
+      tiltDeg,
+      vibrationMg,
+      crackMm,
+      subsidenceMm: mv.subsidenceMm + ph.sub,
+      strainMmPerM: strain,
+      riskScore: Math.min(riskScore, 1),
+      risk: riskBand(riskScore),
+      damage: classifyDamage(strain, tiltMagnitude),
+      hops: hops || 0,
+      rssi: -58 - hops * 14 + jitter * 3,
+      batteryPct: clamp(88 - (spec.addr % 7) * 4 + jitter * 3, 5, 100),
+    };
+  }
+
+  // --------------------------------------------------------------- alerts
+  private raiseAlerts(nodes: NodeReading[], now: number) {
+    for (const n of nodes) {
+      if (!n.online || (n.risk !== 'high' && n.risk !== 'critical')) continue;
+      // One alert per node per simulated interval -- operators ignore a system
+      // that repeats itself every second.
+      // Six simulated hours between repeats for a given node, phase-shifted by
+      // address so a whole zone crossing together still arrives as a sequence
+      // rather than one indistinguishable burst.
+      const cooldown = (6 + (n.addr % 5)) * 3_600_000;
+      if (now - (this.lastAlertAt.get(n.addr) ?? -1e9) < cooldown) continue;
+      this.lastAlertAt.set(n.addr, now);
+
+      const critical = n.risk === 'critical';
+      const crackLed = n.crackMm > CRACK_THRESHOLD_MM * 0.55 && n.crackMm / CRACK_THRESHOLD_MM >
+        n.tiltDeg / TILT_THRESHOLD_DEG;
+      this.alerts.unshift({
+        id: `${n.addr}-${now}`,
+        severity: critical ? 'critical' : n.risk === 'high' ? 'high' : 'medium',
+        title: crackLed
+          ? 'Crack Initiation Detected'
+          : critical
+            ? 'High Deformation Detected'
+            : 'Abnormal Tilt Detected',
+        nodeId: n.id,
+        zone: n.zone,
+        ts: now,
+        metrics: [
+          { label: 'Tilt', value: `${n.tiltDeg.toFixed(2)}°` },
+          { label: 'Crack', value: `${n.crackMm.toFixed(2)} mm` },
+          { label: 'Vibration', value: n.vibrationMg > 60 ? 'High' : 'Normal' },
+        ],
+      });
+    }
+    if (this.alerts.length > 8) this.alerts.length = 8;
+  }
+
+  private buildPrediction(nodes: NodeReading[]): PredictionPoint[] {
+    const peak = Math.max(0, ...nodes.map((n) => n.riskScore));
+    const out: PredictionPoint[] = [];
+    const days = 7;
+    for (let i = 0; i <= days; i++) {
+      const frac = i / days;
+      // Observed history, shaped by the same accelerating trend now on screen.
+      const actual = clamp(peak * Math.pow(frac, 1.9) + noise(i, 3) * 0.02, 0, 1);
+      out.push({ t: i, actual, predicted: clamp(actual + 0.03 - frac * 0.02, 0, 1) });
+    }
+    // Forecast horizon: actual is unknown, the model keeps going.
+    for (let i = 1; i <= 3; i++) {
+      const frac = (days + i) / days;
+      out.push({
+        t: days + i,
+        actual: null,
+        predicted: clamp(peak * Math.pow(frac, 1.9) * 1.04, 0, 1.35),
+      });
+    }
+    return out;
+  }
+
+  private pushHistory(nodes: NodeReading[], now: number) {
+    for (const n of nodes) {
+      const buf = this.trend.get(n.addr)!;
+      buf.push({
+        t: now,
+        pitch: n.tiltPitchDeg,
+        roll: n.tiltRollDeg,
+        vib: n.vibrationMg,
+        crack: n.crackMm,
+      });
+      if (buf.length > HISTORY_POINTS) buf.shift();
+    }
+  }
+
+  /** Wall-clock instant corresponding to a simulated day. */
+  private simTime(day: number): number {
+    return this.simEpoch0 + day * 86_400_000;
+  }
+
+  private snapshot(): Snapshot {
+    const now = this.simTime(this.day);
+    const { hops, routeLinks } = this.solveRoutes();
+    const nodes = this.nodes.map((s) => this.read(s, this.day, hops.get(s.addr) ?? 0));
+
+    this.pushHistory(nodes, now);
+    this.raiseAlerts(nodes, now);
+
+    const links: MeshLink[] = this.staticLinks
+      .filter((l) => !this.offline.has(l.a) && !this.offline.has(l.b))
+      .map((l) => ({
+        ...l,
+        onRoute: routeLinks.has(`${Math.min(l.a, l.b)}-${Math.max(l.a, l.b)}`),
+      }));
+
+    const active = nodes.filter((n) => n.online);
+    const critical = this.alerts.filter((a) => a.severity === 'critical').length;
+    const high = this.alerts.filter((a) => a.severity === 'high').length;
+    const reachable = active.filter((n) => n.hops > 0).length;
+    const delivery = active.length ? (reachable / active.length) * 100 : 0;
+
+    const kpis: Kpis = {
+      totalNodes: nodes.length,
+      activeNodes: active.length,
+      inactiveNodes: nodes.length - active.length,
+      totalAlerts: this.alerts.length,
+      criticalAlerts: critical,
+      highAlerts: high,
+      maxTiltDeg: Math.max(0, ...active.map((n) => n.tiltDeg)),
+      tiltThresholdDeg: TILT_THRESHOLD_DEG,
+      maxCrackMm: Math.max(0, ...active.map((n) => n.crackMm)),
+      crackThresholdMm: CRACK_THRESHOLD_MM,
+      packetDeliveryPct: delivery,
+      uptimePct: 99.1,
+      healthy: !active.some((n) => n.risk === 'critical'),
+    };
+
+    return {
+      t: now,
+      faceX: this.faceX(this.day),
+      nodes,
+      links,
+      alerts: [...this.alerts],
+      prediction: this.buildPrediction(nodes),
+      kpis,
+      gatewayVolts: 13.2 + noise(1, this.tick) * 0.05,
+      gatewayBatteryPct: 78,
+      storagePct: 85,
+    };
+  }
+
+  // ----------------------------------------------------------------- api
+  subscribe(fn: (s: Snapshot) => void) {
+    this.listeners.add(fn);
+    fn(this.snapshot());
+    return () => this.listeners.delete(fn);
+  }
+
+  history(addr: number): TrendPoint[] {
+    return this.trend.get(addr) ?? [];
+  }
+
+  /** Take a node off the air, or bring it back -- drives the re-route demo. */
+  toggleNode(addr: number) {
+    if (this.offline.has(addr)) this.offline.delete(addr);
+    else this.offline.add(addr);
+    this.emit();
+  }
+
+  get elapsedMs() {
+    return Date.now() - this.startedAt;
+  }
+
+  private emit() {
+    const snap = this.snapshot();
+    this.listeners.forEach((fn) => fn(snap));
+  }
+
+  start() {
+    if (this.timer !== null) return;
+    this.timer = window.setInterval(() => {
+      this.tick += 1;
+      this.day += this.dayPerTick;
+      this.emit();
+    }, this.intervalMs);
+  }
+
+  stop() {
+    if (this.timer !== null) window.clearInterval(this.timer);
+    this.timer = null;
+  }
+}
+
+export const panelExtent = (panel: PanelGeometry = DEMO_PANEL) => {
+  const margin = 0.5 * radiusOfInfluence(panel);
+  return {
+    xMin: panel.xStart - margin,
+    xMax: panel.xEnd + margin,
+    yMin: panel.yMin - margin,
+    yMax: panel.yMax + margin,
+  };
+};
+
+export const DEMO_PANEL_GEOMETRY = DEMO_PANEL;

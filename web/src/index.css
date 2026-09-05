@@ -1,0 +1,96 @@
+@import 'maplibre-gl/dist/maplibre-gl.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-plane text-ink font-sans antialiased;
+    overflow: hidden;
+  }
+  /* Recessive scrollbars -- chrome should never compete with the data. */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.12);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+}
+
+@layer components {
+  .panel {
+    @apply overflow-hidden rounded-xl border border-hairline bg-surface shadow-card;
+  }
+  .panel-title {
+    @apply text-[13px] font-semibold uppercase tracking-[0.08em] text-ink;
+  }
+  .panel-sub {
+    @apply text-2xs font-medium uppercase tracking-[0.06em] text-ink-3;
+  }
+  /* Focus ring used across every interactive element. */
+  .focus-ring {
+    @apply outline-none ring-offset-0 focus-visible:ring-2 focus-visible:ring-brand/70;
+  }
+}
+
+/* MapLibre chrome restyled for the dark plane. */
+.maplibregl-ctrl-attrib {
+  background: rgba(10,15,22,0.72) !important;
+  color: #6b7889 !important;
+  font-size: 10px !important;
+}
+.maplibregl-ctrl-attrib a { color: #9aa7b5 !important; }
+.maplibregl-canvas { outline: none; }
+
+/* Reduced motion: keep the information, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------- map nodes */
+/* No `position` here on purpose: MapLibre positions markers with
+   `position:absolute` + a transform, and a `position:relative` of ours would win
+   on specificity and drop every marker back into document flow. The inner
+   wrapper carries the positioning context for the pulse ring instead. */
+.mg-node {
+  display: grid;
+  place-items: center;
+  width: 30px; height: 30px;
+  background: none; border: 0; padding: 0; cursor: pointer;
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mg-node__wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.mg-node:hover { transform: scale(1.18); z-index: 5; }
+.mg-node:focus-visible { outline: 2px solid #22c55e; outline-offset: 2px; border-radius: 999px; }
+.mg-node__dot {
+  display: grid; place-items: center;
+  width: 26px; height: 26px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  background: rgba(10, 15, 22, 0.9);
+  transition: box-shadow 200ms ease;
+}
+.mg-node__id {
+  font-size: 10px; font-weight: 700; color: #e8eef5;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+}
+.mg-node__ring {
+  position: absolute; inset: 2px;
+  border-radius: 999px; opacity: 0.55;
+  animation: mg-pulse 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes mg-pulse {
+  0%   { transform: scale(0.85); opacity: 0.6; }
+  70%  { transform: scale(2.2);  opacity: 0; }
+  100% { transform: scale(2.2);  opacity: 0; }
+}
