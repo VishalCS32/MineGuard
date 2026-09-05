@@ -76,7 +76,8 @@ SITE_PRESETS: dict[str, SitePreset] = {
 
 def build_grid_field(preset: SitePreset, cols: int = 5, rows: int = 3,
                      margin_fraction: float = 0.35, first_addr: int = 0x0010,
-                     ref_post_distance_mm: int = 2500) -> list[NodeSpec]:
+                     ref_post_distance_mm: int = 2500,
+                     max_spacing_m: float | None = None) -> list[NodeSpec]:
     """Lay out ``cols x rows`` nodes over the panel, anchored on the panel edges.
 
     Deliberately *not* a uniform grid. Tilt and strain both peak directly above the
@@ -86,6 +87,14 @@ def build_grid_field(preset: SitePreset, cols: int = 5, rows: int = 3,
     the next ones sit exactly on the panel edges, and any remaining nodes spread
     across the interior. Given a fixed node budget this buys earlier warning for
     free, which matters when nodes cost money and a panel is large.
+
+    ``max_spacing_m`` closes the loop with the radio. Sensing coverage and radio
+    connectivity are separate constraints and they pull in opposite directions;
+    satisfying only the first yields a field that measures the ground perfectly
+    and cannot deliver a frame home. When set, any gap wider than this is
+    subdivided until every neighbour is in range, so the node count falls out of
+    the physics and the link budget together instead of being guessed. Pass
+    ``RadioModel().max_reliable_spacing_m()`` for it.
     """
     if cols < 2 or rows < 2:
         raise ValueError("a deformation field needs at least a 2x2 grid")
@@ -94,6 +103,11 @@ def build_grid_field(preset: SitePreset, cols: int = 5, rows: int = 3,
     margin = margin_fraction * p.radius_of_influence_m
     xs = _edge_anchored_positions(p.x_start, p.x_end, margin, cols)
     ys = _edge_anchored_positions(p.y_min, p.y_max, margin, rows)
+    if max_spacing_m is not None:
+        if max_spacing_m <= 0:
+            raise ValueError("max_spacing_m must be positive")
+        xs = _enforce_max_spacing(xs, max_spacing_m)
+        ys = _enforce_max_spacing(ys, max_spacing_m)
 
     # A node counts as an edge node when it sits within a fifth of the influence
     # radius of a panel boundary -- that is where tilt and strain peak.
@@ -133,6 +147,21 @@ def _edge_anchored_positions(lo: float, hi: float, margin: float, n: int) -> lis
         positions += [lo + step * (i + 1) for i in range(interior)]
     positions += [hi, hi + margin]
     return positions
+
+
+def _enforce_max_spacing(positions: list[float], max_spacing: float) -> list[float]:
+    """Subdivide any gap wider than ``max_spacing``, keeping the original anchors.
+
+    The edge anchors survive untouched -- they are where the signal is -- and infill
+    nodes appear only where the radio actually needs them.
+    """
+    out = [positions[0]]
+    for a, b in zip(positions, positions[1:]):
+        gap = b - a
+        extra = max(0, math.ceil(gap / max_spacing) - 1)
+        out.extend(a + gap * (i + 1) / (extra + 1) for i in range(extra))
+        out.append(b)
+    return out
 
 
 def _linspace(a: float, b: float, n: int) -> list[float]:
