@@ -4,7 +4,7 @@ import { Sidebar, type NavKey } from '@/components/layout/Sidebar';
 import { Footer } from '@/components/layout/Footer';
 import { KpiRow } from '@/components/kpi/KpiRow';
 import { Card } from '@/components/ui/Card';
-import { SubsidenceMap } from '@/components/map/SubsidenceMap';
+import { MapPanel } from '@/components/map/MapPanel';
 import { PredictionChart } from '@/components/charts/PredictionChart';
 import { DeformationTrend, type Range } from '@/components/charts/DeformationTrend';
 import { AlertsPanel, ViewAllButton } from '@/components/alerts/AlertsPanel';
@@ -105,9 +105,10 @@ export default function App() {
                 className="min-h-[340px] flex-1"
                 delay={0.05}
               >
-                <SubsidenceMap
+                <MapPanel
                   nodes={snap.nodes}
                   links={snap.links}
+                  day={snap.day}
                   selectedAddr={selectedAddr}
                   onSelect={setSelected}
                   onToggleNode={(addr) => source.toggleNode(addr)}

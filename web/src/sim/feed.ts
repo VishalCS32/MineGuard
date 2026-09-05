@@ -10,10 +10,11 @@
  * `DataSource` is the seam. When the FastAPI backend is up, `LiveSocketSource`
  * implements the same interface against the WebSocket and nothing else changes.
  */
-import {
-  DEFAULT_PANEL, classifyDamage, evaluate, radiusOfInfluence, type PanelGeometry,
-} from './physics';
+import { classifyDamage, evaluate, type PanelGeometry } from './physics';
 import { GATEWAY_LOCAL, buildField, type NodeSpec } from './field';
+import {
+  DEMO_PANEL, completion as surfaceCompletion, faceX as surfaceFaceX, potholeAt,
+} from './surface';
 import type {
   AlertItem, Kpis, MeshLink, NodeReading, PredictionPoint, RiskLevel, Snapshot, TrendPoint,
 } from '@/data/types';
@@ -24,9 +25,6 @@ export const TILT_THRESHOLD_DEG = 0.6;
 export const CRACK_THRESHOLD_MM = 3.0;
 const MM_PER_M_TO_DEG = 180 / Math.PI / 1000;
 
-/** Panel is supercritical across the face, so the trough develops fully. */
-const DEMO_PANEL: PanelGeometry = { ...DEFAULT_PANEL, yMin: -200, yMax: 200 };
-const FACE_ADVANCE_M_PER_DAY = 12;
 const MAX_LINK_RANGE_M = 240;
 /**
  * The demo runs on a compressed but *internally consistent* clock: one tick is
@@ -40,17 +38,6 @@ const DAY_PER_TICK = TICK_MINUTES / 1440;
 const HISTORY_POINTS = 700;
 /** Opening day: trough developed, pothole part-grown, alerts already standing. */
 const START_DAY = 40;
-
-/** A pothole opening over the goaf, well behind the working face. */
-const POTHOLE = {
-  startDay: 39,
-  // Sudden subsidence over a goaf void develops in hours to a couple of days;
-  // this is the conservative end of that, and it is what visibly moves on screen.
-  rampDays: 2.5,
-  depthMm: 820,
-  sigmaM: 92,
-  yOffset: 40,
-};
 
 export interface DataSource {
   subscribe(fn: (s: Snapshot) => void): () => void;
@@ -186,40 +173,13 @@ export class SimulatedSource implements DataSource {
 
   // -------------------------------------------------------------- physics
   private faceX(day: number): number {
-    return Math.min(this.panel.xStart + FACE_ADVANCE_M_PER_DAY * day, this.panel.xEnd);
-  }
-
-  private potholeCentre(): { cx: number; cy: number } {
-    // Anchored to the goaf, never ahead of the face -- unmined ground cannot
-    // collapse into a void that does not exist yet.
-    const goafEnd = this.faceX(POTHOLE.startDay);
-    return { cx: this.panel.xStart + 0.45 * (goafEnd - this.panel.xStart), cy: POTHOLE.yOffset };
-  }
-
-  private potholeAt(x: number, y: number, day: number) {
-    const ramp = clamp((day - POTHOLE.startDay) / POTHOLE.rampDays, 0, 1);
-    if (ramp <= 0) return { sub: 0, tiltX: 0, tiltY: 0, strain: 0, rate: 0 };
-    const { cx, cy } = this.potholeCentre();
-    const dx = x - cx;
-    const dy = y - cy;
-    const s2 = POTHOLE.sigmaM ** 2;
-    const bump = Math.exp(-(dx * dx + dy * dy) / (2 * s2));
-    const depth = POTHOLE.depthMm * ramp;
-    const b = 0.4 * this.panel.seamDepthM;
-    return {
-      sub: depth * bump,
-      tiltX: (-depth * bump * dx) / s2,
-      tiltY: (-depth * bump * dy) / s2,
-      strain: b * depth * bump * ((dx * dx) / (s2 * s2) - 1 / s2),
-      rate: ramp < 1 ? (POTHOLE.depthMm * bump) / (POTHOLE.rampDays * 24) : 0,
-    };
+    return surfaceFaceX(day, this.panel);
   }
 
   private read(spec: NodeSpec, day: number, hops: number): NodeReading {
     const faceX = this.faceX(day);
-    const completion = 1 - Math.exp(-0.35 * Math.max(day, 0));
-    const mv = evaluate(this.panel, spec.x, spec.y, faceX, completion);
-    const ph = this.potholeAt(spec.x, spec.y, day);
+    const mv = evaluate(this.panel, spec.x, spec.y, faceX, surfaceCompletion(day));
+    const ph = potholeAt(spec.x, spec.y, day, this.panel);
 
     const tiltX = mv.tiltX + ph.tiltX;
     const tiltY = mv.tiltY + ph.tiltY;
@@ -279,10 +239,10 @@ export class SimulatedSource implements DataSource {
       if (!n.online || (n.risk !== 'high' && n.risk !== 'critical')) continue;
       // One alert per node per simulated interval -- operators ignore a system
       // that repeats itself every second.
-      // Six simulated hours between repeats for a given node, phase-shifted by
+      // Most of a simulated day between repeats for a given node, phase-shifted by
       // address so a whole zone crossing together still arrives as a sequence
       // rather than one indistinguishable burst.
-      const cooldown = (6 + (n.addr % 5)) * 3_600_000;
+      const cooldown = (18 + (n.addr % 7)) * 3_600_000;
       if (now - (this.lastAlertAt.get(n.addr) ?? -1e9) < cooldown) continue;
       this.lastAlertAt.set(n.addr, now);
 
@@ -390,6 +350,7 @@ export class SimulatedSource implements DataSource {
 
     return {
       t: now,
+      day: this.day,
       faceX: this.faceX(this.day),
       nodes,
       links,
@@ -444,14 +405,5 @@ export class SimulatedSource implements DataSource {
   }
 }
 
-export const panelExtent = (panel: PanelGeometry = DEMO_PANEL) => {
-  const margin = 0.5 * radiusOfInfluence(panel);
-  return {
-    xMin: panel.xStart - margin,
-    xMax: panel.xEnd + margin,
-    yMin: panel.yMin - margin,
-    yMax: panel.yMax + margin,
-  };
-};
-
+export { panelExtent } from './surface';
 export const DEMO_PANEL_GEOMETRY = DEMO_PANEL;

@@ -1,7 +1,7 @@
 # MineGuard — web dashboard
 
-React 18 + Vite + TypeScript + Tailwind + Framer Motion, with MapLibre GL for the
-GIS layer. Dark, single-mode by design.
+React 18 + Vite + TypeScript + Tailwind + Framer Motion. Leaflet for the 2-D map,
+Three.js for the 3-D terrain. Dark, single-mode by design.
 
 ```bash
 npm install
@@ -27,12 +27,38 @@ The clock is compressed but internally consistent: one tick is fifteen simulated
 minutes delivered every 250 ms, and chart timestamps are simulated time — so the
 1H / 6H / 24H / 7D range tabs mean exactly what they say.
 
+## The two map views
+
+Leaflet has no camera pitch — it is a 2-D renderer with no third axis — so the two
+views are two renderers over one surface model (`src/sim/surface.ts`):
+
+- **2-D (Leaflet)** — the plan view. Esri satellite tiles, node markers, animated
+  mesh links, and the interpolated risk field as an image overlay. Answers *which
+  node, which zone*.
+- **3-D (Three.js)** — the same ground as real geometry. The subsidence trough is
+  a displaced mesh with the satellite imagery and risk field draped over it, and
+  the nodes stand on poles rooted in the deformed surface. Answers *what shape,
+  how deep, where is it steepest* — and the flanks you can see are exactly where
+  tilt and strain peak.
+
+Vertical exaggeration defaults to 50x and is stated on screen. A 1.9 m trough
+spread over 800 m of surface is a barely perceptible dish at true scale;
+exaggeration is standard practice in subsidence visualisation, and labelling the
+factor stops it being read as real depth. `True` shows the honest 1x geometry.
+
+The 3-D terrain re-tessellates every frame because the surface sampler is
+separable: `S(x,y) = A*Fx(x)*Fy(y) + D*Gx(x)*Gy(y)`, so a 140x110 grid costs 250
+profile evaluations instead of 15,400.
+
 ## Interactions worth knowing
 
 - **Click a node** — drives the trend chart and the gauges.
 - **Shift-click a node** — cuts its power. Watch hop counts change and the field
   re-route around it; this is the mesh self-healing demo.
-- **Layers button** — toggles the satellite basemap.
+- **2D / 3D** — switches renderer. Both read the same live data.
+- **Drag / scroll in 3D** — orbit and zoom. The camera sits low on purpose;
+  from overhead a subsidence bowl is nearly indistinguishable from a flat plane.
+- **Layers button** — toggles the satellite basemap in either view.
 
 ## Visualisation rules this follows
 

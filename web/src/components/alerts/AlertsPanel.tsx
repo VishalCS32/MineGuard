@@ -26,7 +26,9 @@ export function AlertsPanel({ alerts }: { alerts: AlertItem[] }) {
         WebkitMaskImage: 'linear-gradient(to bottom, #000 calc(100% - 28px), transparent)',
       }}
     >
-      <AnimatePresence initial={false} mode="popLayout">
+      {/* Sync mode, not popLayout: popLayout takes exiting cards out of flow
+          and paints them over the incoming one mid-transition. */}
+      <AnimatePresence initial={false}>
         {alerts.slice(0, 6).map((a) => {
           const t = TONE[a.severity];
           return (
@@ -35,7 +37,7 @@ export function AlertsPanel({ alerts }: { alerts: AlertItem[] }) {
               layout
               initial={{ opacity: 0, x: 24, scale: 0.97 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -16, scale: 0.97 }}
+              exit={{ opacity: 0, height: 0, marginBottom: -8, transition: { duration: 0.18 } }}
               transition={{ type: 'spring', stiffness: 320, damping: 30 }}
               className={`rounded-lg border border-hairline border-l-[3px] ${t.ring} ${t.bg} px-3 py-2.5`}
             >

@@ -83,6 +83,8 @@ export interface Kpis {
 
 export interface Snapshot {
   t: number;
+  /** Simulated day -- what the 3-D terrain samples the subsidence surface at. */
+  day: number;
   faceX: number;
   nodes: NodeReading[];
   links: MeshLink[];

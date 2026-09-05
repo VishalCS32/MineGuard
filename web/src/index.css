@@ -1,4 +1,4 @@
-@import 'maplibre-gl/dist/maplibre-gl.css';
+@import 'leaflet/dist/leaflet.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,14 +35,32 @@
   }
 }
 
-/* MapLibre chrome restyled for the dark plane. */
-.maplibregl-ctrl-attrib {
-  background: rgba(10,15,22,0.72) !important;
+/* Leaflet chrome restyled for the dark plane. */
+.leaflet-container {
+  background: #0a0f16;
+  font-family: inherit;
+  outline: none;
+}
+.leaflet-control-attribution {
+  background: rgba(10, 15, 22, 0.72) !important;
   color: #6b7889 !important;
   font-size: 10px !important;
 }
-.maplibregl-ctrl-attrib a { color: #9aa7b5 !important; }
-.maplibregl-canvas { outline: none; }
+.leaflet-control-attribution a { color: #9aa7b5 !important; }
+.leaflet-control-scale-line {
+  background: rgba(10, 15, 22, 0.72);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #9aa7b5;
+  font-size: 10px;
+}
+/* Knock the imagery back so the deformation overlay stays the brightest thing. */
+.mg-tiles { filter: brightness(0.86) saturate(0.82) contrast(1.04); }
+.mg-heat { image-rendering: auto; mix-blend-mode: normal; }
+
+/* Mesh links: routes carrying traffic home animate toward the gateway. */
+.mg-link { pointer-events: none; }
+.mg-link--route { animation: mg-dash 0.9s linear infinite; }
+@keyframes mg-dash { to { stroke-dashoffset: -16; } }
 
 /* Reduced motion: keep the information, drop the movement. */
 @media (prefers-reduced-motion: reduce) {
