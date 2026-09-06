@@ -1,12 +1,19 @@
 import { motion } from 'framer-motion';
 import { IconBell, IconCloud, IconShield, IconUser } from '@/components/ui/icons';
+import type { SourceStatus } from '@/data/source';
 
 interface Props {
   alertCount: number;
-  online: boolean;
+  status: SourceStatus;
 }
 
-export function TopBar({ alertCount, online }: Props) {
+export function TopBar({ alertCount, status }: Props) {
+  // Three honest states, never a green light that means nothing: live and
+  // connected, live but the link has dropped, or running on the local model.
+  const live = status.kind === 'live';
+  const label = live ? (status.connected ? 'Online' : 'Reconnecting…') : 'Local model';
+  const tone = live && status.connected ? 'text-brand'
+    : live ? 'text-warning' : 'text-ink-2';
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-hairline bg-surface/60 px-4 backdrop-blur">
       {/* Brand */}
@@ -41,12 +48,10 @@ export function TopBar({ alertCount, online }: Props) {
 
       {/* Status cluster */}
       <div className="flex shrink-0 items-center gap-4">
-        <div className="flex items-center gap-2 text-xs">
-          <IconCloud size={16} className={online ? 'text-brand' : 'text-ink-3'} />
+        <div className="flex items-center gap-2 text-xs" title={status.detail ?? ''}>
+          <IconCloud size={16} className={tone} />
           <span className="text-ink-2">Cloud Sync:</span>
-          <span className={online ? 'font-semibold text-brand' : 'font-semibold text-ink-3'}>
-            {online ? 'Online' : 'Offline'}
-          </span>
+          <span className={`font-semibold ${tone}`}>{label}</span>
         </div>
 
         <button

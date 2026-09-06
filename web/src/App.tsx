@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { TopBar } from '@/components/layout/TopBar';
 import { Sidebar, type NavKey } from '@/components/layout/Sidebar';
 import { Footer } from '@/components/layout/Footer';
@@ -11,7 +11,8 @@ import { AlertsPanel, ViewAllButton } from '@/components/alerts/AlertsPanel';
 import { ParamsPanel } from '@/components/params/ParamsPanel';
 import { SystemHealth } from '@/components/health/SystemHealth';
 import { DataFlow } from '@/components/health/DataFlow';
-import { SimulatedSource } from '@/sim/feed';
+import { createSource } from '@/data/createSource';
+import type { DataSource, SourceStatus } from '@/data/source';
 import type { Snapshot, TrendPoint } from '@/data/types';
 
 /**
@@ -30,10 +31,10 @@ function hoursToThreshold(snap: Snapshot | null): number | null {
 }
 
 export default function App() {
-  const sourceRef = useRef<SimulatedSource | null>(null);
-  if (sourceRef.current === null) sourceRef.current = new SimulatedSource();
-  const source = sourceRef.current;
-
+  // The source is resolved asynchronously: live backend if one answers,
+  // otherwise the built-in physics model.
+  const [source, setSource] = useState<DataSource | null>(null);
+  const [status, setStatus] = useState<SourceStatus>({ kind: 'simulated', connected: false });
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [history, setHistory] = useState<TrendPoint[]>([]);
   const [nav, setNav] = useState<NavKey>('dashboard');
@@ -42,10 +43,30 @@ export default function App() {
   const [clock, setClock] = useState(new Date());
 
   useEffect(() => {
-    const unsub = source.subscribe(setSnap);
+    let disposed = false;
+    let created: DataSource | null = null;
+    void createSource().then((s) => {
+      if (disposed) {
+        s.stop();
+        return;
+      }
+      created = s;
+      setSource(s);
+    });
+    return () => {
+      disposed = true;
+      created?.stop();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!source) return;
+    const unsubSnap = source.subscribe(setSnap);
+    const unsubStatus = source.onStatus(setStatus);
     source.start();
     return () => {
-      unsub();
+      unsubSnap();
+      unsubStatus();
       source.stop();
     };
   }, [source]);
@@ -68,20 +89,20 @@ export default function App() {
   const selectedNode = snap?.nodes.find((n) => n.addr === selectedAddr);
 
   useEffect(() => {
-    if (snap) setHistory([...source.history(selectedAddr)]);
+    if (snap && source) setHistory([...source.history(selectedAddr)]);
   }, [snap, selectedAddr, source]);
 
   if (!snap) {
     return (
       <div className="grid h-full place-items-center text-sm text-ink-3">
-        Initialising sensor field…
+        {source ? 'Waiting for the first frame…' : 'Locating gateway…'}
       </div>
     );
   }
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <TopBar alertCount={snap.alerts.length} online />
+      <TopBar alertCount={snap.alerts.length} status={status} />
 
       <div className="flex min-h-0 flex-1">
         <Sidebar
@@ -111,7 +132,7 @@ export default function App() {
                   day={snap.day}
                   selectedAddr={selectedAddr}
                   onSelect={setSelected}
-                  onToggleNode={(addr) => source.toggleNode(addr)}
+                  onToggleNode={source?.toggleNode ? (addr) => source.toggleNode!(addr) : undefined}
                 />
               </Card>
 

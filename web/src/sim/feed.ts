@@ -18,6 +18,7 @@ import {
 import type {
   AlertItem, Kpis, MeshLink, NodeReading, PredictionPoint, RiskLevel, Snapshot, TrendPoint,
 } from '@/data/types';
+import type { DataSource, SourceStatus } from '@/data/source';
 
 /** Disruptive-tilt limit, 10 mm/m expressed in degrees -- the NCB-style bound at
  *  which services, drainage and structures start to suffer. */
@@ -39,13 +40,6 @@ const HISTORY_POINTS = 700;
 /** Opening day: trough developed, pothole part-grown, alerts already standing. */
 const START_DAY = 40;
 
-export interface DataSource {
-  subscribe(fn: (s: Snapshot) => void): () => void;
-  history(addr: number): TrendPoint[];
-  start(): void;
-  stop(): void;
-}
-
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 function riskBand(score: number): RiskLevel {
@@ -62,8 +56,12 @@ function noise(seed: number, t: number): number {
 }
 
 export class SimulatedSource implements DataSource {
+  /** Flagged so the UI can say plainly that this is modelled, not measured. */
+  readonly kind = 'simulated' as const;
+
   private readonly nodes: NodeSpec[];
   private readonly listeners = new Set<(s: Snapshot) => void>();
+  private readonly statusListeners = new Set<(s: SourceStatus) => void>();
   private readonly trend = new Map<number, TrendPoint[]>();
   private readonly alerts: AlertItem[] = [];
   private readonly lastAlertAt = new Map<number, number>();
@@ -368,6 +366,12 @@ export class SimulatedSource implements DataSource {
     this.listeners.add(fn);
     fn(this.snapshot());
     return () => this.listeners.delete(fn);
+  }
+
+  onStatus(fn: (s: SourceStatus) => void): () => void {
+    this.statusListeners.add(fn);
+    fn({ kind: 'simulated', connected: false, detail: 'running on the built-in model' });
+    return () => this.statusListeners.delete(fn);
   }
 
   history(addr: number): TrendPoint[] {

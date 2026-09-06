@@ -1,0 +1,8 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0
+pydantic-settings>=2.4
+aiosqlite>=0.20        # dev, and the gateway's own offline buffer
+asyncpg>=0.29          # TimescaleDB/PostGIS in the deployed stack
+aiomqtt>=2.0           # optional: gateway uplink over MQTT
+httpx>=0.27
