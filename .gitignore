@@ -12,3 +12,9 @@ data/generated/
 .pio/
 android/local.properties
 android/.gradle/
+
+# Local development database (SQLite); the deployed stack uses TimescaleDB.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
