@@ -72,4 +72,17 @@ profile evaluations instead of 15,400.
 - **The heat overlay stops where the evidence does.** Inverse-distance weighting
   will happily extrapolate a confident value across ground no node can see, so
   confidence decays with distance to the nearest node.
-- Series colours were validated against this dark surface rather than eyeballed.
+- **Colours were computed, not eyeballed.** Vibrance means maximum chroma at a
+  fixed lightness, not raising lightness — the first attempt at "more vibrant"
+  failed the lightness band precisely because it went lighter instead of more
+  chromatic. Every palette is checked with the validator against this surface:
+
+  | Palette | Worst adjacent CVD | Worst adjacent normal-vision | Contrast |
+  |---|---|---|---|
+  | Series (charts) | 10.0 deutan / 13.3 tritan | 28.3 | all >= 3:1 |
+  | Status (risk bands) | 13.1 protan / 8.9 tritan | 17.9 | all >= 3:1 |
+
+  Targets are CVD >= 8 and normal-vision >= 15. The risk ramp needed its hue
+  spread widened and its lightness staggered to clear the normal-vision floor:
+  green -> amber -> orange -> red crowds at both warm joins, which is why the
+  earlier, duller ramp sat at 13.6 and failed it.
