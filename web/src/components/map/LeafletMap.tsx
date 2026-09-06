@@ -6,7 +6,7 @@ import { renderHeat } from './heat';
 import type { MeshLink, NodeReading } from '@/data/types';
 
 const RISK_HEX: Record<string, string> = {
-  low: '#0ca30c', medium: '#fab219', high: '#ec835a', critical: '#d03b3b',
+  low: '#00c14f', medium: '#f2dc00', high: '#ff7a00', critical: '#e80038',
 };
 
 const HEAT_W = 300;
@@ -133,7 +133,7 @@ export function LeafletMap({
     const url = canvas.toDataURL();
     if (!heatRef.current) {
       heatRef.current = L.imageOverlay(url, bounds, {
-        opacity: 0.66,
+        opacity: 0.76,
         interactive: false,
         className: 'mg-heat',
       }).addTo(map);

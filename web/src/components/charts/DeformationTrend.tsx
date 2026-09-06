@@ -84,8 +84,8 @@ export function DeformationTrend({ history, range, onRange }: Props) {
             unit="°"
             formatY={(v) => v.toFixed(2)}
             series={[
-              { key: 'pitch', label: 'Pitch', color: '#3987e5', points: data.map((d) => ({ x: d.t, y: d.pitch })) },
-              { key: 'roll', label: 'Roll', color: '#d95926', points: data.map((d) => ({ x: d.t, y: d.roll })) },
+              { key: 'pitch', label: 'Pitch', color: '#258cff', points: data.map((d) => ({ x: d.t, y: d.pitch })) },
+              { key: 'roll', label: 'Roll', color: '#e96100', points: data.map((d) => ({ x: d.t, y: d.roll })) },
             ]}
           />
         </div>
@@ -102,7 +102,7 @@ export function DeformationTrend({ history, range, onRange }: Props) {
             showLegend={false}
             formatY={(v) => v.toFixed(0)}
             series={[
-              { key: 'vib', label: 'Vibration RMS', color: '#199e70', points: data.map((d) => ({ x: d.t, y: d.vib })) },
+              { key: 'vib', label: 'Vibration RMS', color: '#00ab70', points: data.map((d) => ({ x: d.t, y: d.vib })) },
             ]}
           />
         </div>
@@ -118,7 +118,7 @@ export function DeformationTrend({ history, range, onRange }: Props) {
             showLegend={false}
             formatY={(v) => v.toFixed(2)}
             series={[
-              { key: 'crack', label: 'Crack width', color: '#9085e9', points: data.map((d) => ({ x: d.t, y: d.crack })) },
+              { key: 'crack', label: 'Crack width', color: '#9863ff', points: data.map((d) => ({ x: d.t, y: d.crack })) },
             ]}
           />
         </div>

@@ -19,7 +19,7 @@ const SWEEP = 250;
  *  both printed -- the arc is the at-a-glance layer, not the only layer. */
 export function Gauge({ label, value, limit, unit, decimals = 2, note }: Props) {
   const ratio = Math.max(0, Math.min(1.15, value / limit));
-  const colour = ratio >= 1 ? '#d03b3b' : ratio >= 0.75 ? '#ec835a' : ratio >= 0.5 ? '#fab219' : '#0ca30c';
+  const colour = ratio >= 1 ? '#e80038' : ratio >= 0.75 ? '#ff7a00' : ratio >= 0.5 ? '#f2dc00' : '#00c14f';
 
   const r = 32;
   const cx = 44;
@@ -41,7 +41,7 @@ export function Gauge({ label, value, limit, unit, decimals = 2, note }: Props) 
     <div className="flex flex-col items-center rounded-lg border border-hairline bg-surface-2/60 px-1.5 py-2">
       <div className="mb-0.5 text-center text-[10px] font-medium leading-tight text-ink-2">{label}</div>
       <svg width="88" height="58" viewBox="0 0 88 58" role="img" aria-label={`${label}: ${value.toFixed(decimals)} ${unit} of ${limit} limit`}>
-        <path d={arc(START, START + SWEEP)} fill="none" stroke="#2c333d" strokeWidth="6" strokeLinecap="round" />
+        <path d={arc(START, START + SWEEP)} fill="none" stroke="#28374a" strokeWidth="6" strokeLinecap="round" />
         <motion.path
           d={arc(START, end)}
           fill="none"

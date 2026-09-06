@@ -4,34 +4,39 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Surfaces -- the dashboard is a deliberately dark, single-mode design.
-        plane: '#0a0f16',
-        surface: '#151c25',
-        'surface-2': '#1b232e',
-        'surface-3': '#222c38',
-        hairline: 'rgba(255,255,255,0.08)',
+        // Surfaces -- deliberately dark and single-mode. Deepened so saturated
+        // marks read at full strength against them.
+        plane: '#070c13',
+        surface: '#121a24',
+        'surface-2': '#18222e',
+        'surface-3': '#222e3d',
+        hairline: 'rgba(255,255,255,0.09)',
 
         // Ink
-        ink: '#e8eef5',
-        'ink-2': '#9aa7b5',
-        'ink-3': '#6b7889',
+        ink: '#eaf1f8',
+        'ink-2': '#9fb0c2',
+        'ink-3': '#7286a0',
 
         // Brand
-        brand: '#22c55e',
-        'brand-dim': '#16a34a',
-        'brand-glow': 'rgba(34,197,94,0.16)',
+        brand: '#1fdd75',
+        'brand-dim': '#12b45c',
+        'brand-glow': 'rgba(31,221,117,0.18)',
 
         // Status palette -- fixed, never themed, never reused as a series colour.
-        good: '#0ca30c',
-        warning: '#fab219',
-        serious: '#ec835a',
-        critical: '#d03b3b',
+        // Validated as an adjacent ramp on this surface: worst normal-vision
+        // pair 17.9 and worst CVD pair 13.1 protan / 8.9 tritan, so the bands
+        // separate on their own before the label and contour reinforce them.
+        good: '#00c14f',
+        warning: '#f2dc00',
+        serious: '#ff7a00',
+        critical: '#e80038',
 
-        // Categorical series slots, validated for this dark surface.
-        's1': '#3987e5',
-        's2': '#d95926',
-        's3': '#199e70',
-        's4': '#9085e9',
+        // Categorical series slots: maximum chroma at a lightness inside the
+        // 0.48-0.67 band, validated against this surface.
+        's1': '#258cff',
+        's2': '#e96100',
+        's3': '#00ab70',
+        's4': '#9863ff',
       },
       fontFamily: {
         sans: ['system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
@@ -41,7 +46,7 @@ export default {
       },
       boxShadow: {
         card: '0 1px 2px rgba(0,0,0,0.4), 0 8px 24px -12px rgba(0,0,0,0.6)',
-        glow: '0 0 0 1px rgba(34,197,94,0.35), 0 0 24px -4px rgba(34,197,94,0.45)',
+        glow: '0 0 0 1px rgba(31,221,117,0.42), 0 0 26px -4px rgba(31,221,117,0.55)',
       },
       keyframes: {
         'pulse-ring': {

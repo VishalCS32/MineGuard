@@ -15,13 +15,13 @@ export function PredictionChart({ data, hoursToThreshold }: Props) {
     {
       key: 'actual',
       label: 'Actual risk score',
-      color: '#3987e5',
+      color: '#258cff',
       points: data.map((d) => ({ x: d.t, y: d.actual })),
     },
     {
       key: 'predicted',
       label: 'Predicted risk score',
-      color: '#d95926',
+      color: '#e96100',
       dashed: true,
       points: data.map((d) => ({ x: d.t, y: d.predicted })),
     },

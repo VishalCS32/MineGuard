@@ -25,12 +25,12 @@ interface TileProps {
 }
 
 const TONES: Record<TileProps['tone'], { text: string; bg: string; ring: string }> = {
-  brand: { text: 'text-brand', bg: 'bg-brand/12', ring: 'ring-brand/25' },
-  s1: { text: 'text-s1', bg: 'bg-s1/12', ring: 'ring-s1/25' },
-  s4: { text: 'text-s4', bg: 'bg-s4/12', ring: 'ring-s4/25' },
-  serious: { text: 'text-serious', bg: 'bg-serious/12', ring: 'ring-serious/25' },
-  s3: { text: 'text-s3', bg: 'bg-s3/12', ring: 'ring-s3/25' },
-  good: { text: 'text-good', bg: 'bg-good/12', ring: 'ring-good/25' },
+  brand: { text: 'text-brand', bg: 'bg-brand/18', ring: 'ring-brand/40' },
+  s1: { text: 'text-s1', bg: 'bg-s1/18', ring: 'ring-s1/40' },
+  s4: { text: 'text-s4', bg: 'bg-s4/18', ring: 'ring-s4/40' },
+  serious: { text: 'text-serious', bg: 'bg-serious/18', ring: 'ring-serious/40' },
+  s3: { text: 'text-s3', bg: 'bg-s3/18', ring: 'ring-s3/40' },
+  good: { text: 'text-good', bg: 'bg-good/18', ring: 'ring-good/40' },
 };
 
 function Tile({ label, value, sub, Icon, tone, index }: TileProps) {

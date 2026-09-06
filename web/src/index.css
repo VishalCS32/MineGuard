@@ -54,7 +54,7 @@
   font-size: 10px;
 }
 /* Knock the imagery back so the deformation overlay stays the brightest thing. */
-.mg-tiles { filter: brightness(0.86) saturate(0.82) contrast(1.04); }
+.mg-tiles { filter: brightness(0.92) saturate(1.02) contrast(1.08); }
 .mg-heat { image-rendering: auto; mix-blend-mode: normal; }
 
 /* Mesh links: routes carrying traffic home animate toward the gateway. */

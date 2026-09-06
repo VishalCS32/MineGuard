@@ -23,17 +23,17 @@ export interface Extent {
 
 /** Reserved status palette. Index = risk band. */
 const BANDS = [
-  { stop: 0.35, rgb: [12, 163, 12] as const },   // good      -> Low
-  { stop: 0.6, rgb: [250, 178, 25] as const },   // warning   -> Medium
-  { stop: 0.85, rgb: [236, 131, 90] as const },  // serious   -> High
-  { stop: 1.01, rgb: [208, 59, 59] as const },   // critical  -> Critical
+  { stop: 0.35, rgb: [0, 193, 79] as const },    // good      -> Low
+  { stop: 0.6, rgb: [242, 220, 0] as const },    // warning   -> Medium
+  { stop: 0.85, rgb: [255, 122, 0] as const },   // serious   -> High
+  { stop: 1.01, rgb: [232, 0, 56] as const },    // critical  -> Critical
 ];
 
 export const RISK_BANDS = [
-  { key: 'low', label: 'Low', hex: '#0ca30c' },
-  { key: 'medium', label: 'Medium', hex: '#fab219' },
-  { key: 'high', label: 'High', hex: '#ec835a' },
-  { key: 'critical', label: 'Critical', hex: '#d03b3b' },
+  { key: 'low', label: 'Low', hex: '#00c14f' },
+  { key: 'medium', label: 'Medium', hex: '#f2dc00' },
+  { key: 'high', label: 'High', hex: '#ff7a00' },
+  { key: 'critical', label: 'Critical', hex: '#e80038' },
 ] as const;
 
 function bandIndex(v: number): number {
@@ -125,8 +125,12 @@ export function renderHeat(
       const v = field[i];
       const [r, g, b] = rampColor(v);
 
-      // Fade out toward zero so undisturbed ground shows the imagery beneath.
-      let alpha = Math.min(1, Math.max(0, (v - 0.06) / 0.34)) * 200;
+      // Opacity tracks risk across the whole range, not just the bottom of it.
+      // Saturating alpha early makes calm ground as loud as a failing panel and
+      // flattens the gradient; ramping it right through means the overlay only
+      // becomes solid where the danger actually is, and quiet ground keeps
+      // showing the terrain underneath.
+      let alpha = Math.min(1, Math.max(0, (v - 0.08) / 0.62)) ** 0.85 * 242;
 
       // And fade out away from the sensors themselves. Inverse-distance
       // weighting will happily extrapolate a confident-looking value across

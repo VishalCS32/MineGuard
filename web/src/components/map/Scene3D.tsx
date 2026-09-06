@@ -22,7 +22,7 @@ import { localToWgs84 } from '@/sim/field';
 import type { MeshLink, NodeReading } from '@/data/types';
 
 const RISK_HEX: Record<string, number> = {
-  low: 0x0ca30c, medium: 0xfab219, high: 0xec835a, critical: 0xd03b3b,
+  low: 0x00c14f, medium: 0xf2dc00, high: 0xff7a00, critical: 0xe80038,
 };
 
 /** Terrain tessellation. Cheap because the surface sampler is separable. */
@@ -253,7 +253,7 @@ export function Scene3D({
         ctx.fillRect(0, 0, TEX_W, TEX_H);
       }
       renderHeat(st.heatCanvas, nodes, extent);
-      ctx.globalAlpha = 0.72;
+      ctx.globalAlpha = 0.82;
       ctx.drawImage(st.heatCanvas, 0, 0, TEX_W, TEX_H);
       ctx.globalAlpha = 1;
       st.texture.needsUpdate = true;
@@ -278,7 +278,7 @@ export function Scene3D({
         const head = new THREE.Mesh(
           new THREE.SphereGeometry(7, 18, 14),
           new THREE.MeshStandardMaterial({
-            color: colour, emissive: colour, emissiveIntensity: 0.55, roughness: 0.35,
+            color: colour, emissive: colour, emissiveIntensity: 0.85, roughness: 0.28,
           }),
         );
         pole.userData.addr = n.addr;
@@ -313,7 +313,7 @@ export function Scene3D({
         mat.color.setHex(colour);
         if ('emissive' in mat) {
           mat.emissive.setHex(selected ? 0xffffff : colour);
-          mat.emissiveIntensity = selected ? 0.9 : 0.55;
+          mat.emissiveIntensity = selected ? 1.3 : 0.85;
         }
         mat.opacity = n.online ? 1 : 0.4;
         mat.transparent = !n.online;
