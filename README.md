@@ -94,5 +94,3 @@ visible as such, not assumed.
 falls back to the built-in physics model and says so in the header; the gateway
 buffers frames and reconciles them when the link returns. A monitoring screen
 that goes blank when connectivity drops is worse than useless on a mine site.
-
-#test
