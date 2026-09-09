@@ -20,10 +20,18 @@ export interface NodeReading {
   tiltPitchDeg: number;
   tiltRollDeg: number;
   tiltDeg: number;
+  /** Degrees per hour. The precursor signal: ground that accelerates is failing. */
+  tiltRateDegPerH: number;
   vibrationMg: number;
-  crackMm: number;
+  /** LIS3DH die temperature. Carried so tilt can be drift-corrected, not weather. */
+  tempC: number;
+  /** Integrated from the tilt array; only meaningful when anchored. */
   subsidenceMm: number;
+  subsidenceValid: boolean;
+  /** Reconstructed from the tilt gradient across neighbours -- not a sensor. */
   strainMmPerM: number;
+  strainValid: boolean;
+  gnssSats: number;
   riskScore: number;
   risk: RiskLevel;
   damage: DamageClass;
@@ -55,7 +63,7 @@ export interface TrendPoint {
   pitch: number;
   roll: number;
   vib: number;
-  crack: number;
+  tempC: number;
 }
 
 export interface PredictionPoint {
@@ -74,8 +82,13 @@ export interface Kpis {
   highAlerts: number;
   maxTiltDeg: number;
   tiltThresholdDeg: number;
-  maxCrackMm: number;
-  crackThresholdMm: number;
+  maxStrainMmPerM: number;
+  strainThresholdMmPerM: number;
+  maxSubsidenceMm: number;
+  maxTiltRateDegPerH: number;
+  tiltRateThresholdDegPerH: number;
+  /** False when the array is too sparse to differentiate -- strain reads unknown. */
+  strainResolved: boolean;
   packetDeliveryPct: number;
   uptimePct: number;
   healthy: boolean;

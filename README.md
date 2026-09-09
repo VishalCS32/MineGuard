@@ -6,13 +6,19 @@ of sensor nodes over the mine panel.
 
 ```
  NODE ×21  ──LoRa 865MHz mesh──►  GATEWAY  ──HTTP/MQTT──►  API  ──WS/REST──►  DASHBOARD
- ESP32-S3                         ESP32                    FastAPI            React
- LIS3DH tilt + vibration          E220 LoRa                TimescaleDB        Leaflet 2-D
- VL53L1X displacement             SIM800L SMS              PostGIS            Three.js 3-D
- crack gauge                      SD buffer                risk + alerts
- E220 (wake-on-radio)             local rule engine
+ ESP32-S3 mini                    ESP32 mini               FastAPI            React
+ LIS3DH tilt + vibration + temp   E220 LoRa (SPI)          TimescaleDB        Leaflet 2-D
+ vibration sensor (wake IRQ)      SIM800L V2 SMS           PostGIS            Three.js 3-D
+ NEO-6M GNSS                      flash buffer             risk + alerts
+ E220-900M22S (LLCC68, SPI)       local rule engine        field reconstruction
         ◄────────────── config downlink ──────────────────────┘
 ```
+
+**The nodes measure tilt. Everything else is derived from the array.** There is
+no crack gauge and no ranger, because there does not need to be: over a
+subsidence trough, strain and displacement are the neighbouring derivatives of
+the same curve that tilt sits on. Differentiate a line of tilt sensors and you
+get strain; integrate it and you get subsidence. See `docs/WORKFLOW.md`.
 
 ## Run it
 
@@ -70,11 +76,39 @@ make test
 
 | Suite | Covers |
 |---|---|
-| `packages/subnet-proto` (26) | Frame round-trips, corruption handling, C↔Python byte identity |
-| `ml` (116) | Subsidence physics, sensor error model, scenario labels, mesh self-healing |
-| `backend` (30) | Ingest, baselines, alert rate-limiting, config downlink round trip, topology |
+| `packages/subnet-proto` (32) | Frame round-trips, corruption handling, C↔Python byte identity |
+| `ml` (122) | Subsidence physics, sensor error model, scenario labels, mesh self-healing |
+| `backend` (63) | Ingest, baselines, field reconstruction, alerts, config downlink, topology |
 
 ## Design notes worth knowing
+
+**Strain is reconstructed, not measured.** No node carries a crack gauge. The
+physics says `strain = B · dT/dx` and `subsidence = ∫T dx`, so a line of tilt
+sensors recovers both — and the tests assert it against the analytic model, not
+against the reconstruction's own output. Two layout rules fall out of that and
+both are enforced in code: spacing must be under a third of the radius of
+influence (or the difference between neighbours stops representing the local
+curvature), and the line must be anchored on ground a full radius beyond the
+panel (or the integration constant is unknown and every depth reads low).
+
+**The node budget decides the layout, not the other way round.** Covering the
+whole panel as a grid at the spacing strain needs would take ~105 nodes here.
+The same 21 nodes arranged as one survey line across the panel resolve the full
+profile — strain correlation 0.995 against the analytic field, subsidence within
+2%. That is also how subsidence has been monitored for a century: survey lines,
+not grids.
+
+**Temperature is a measurement channel, not a nicety.** Thermal expansion of the
+mounting post swings apparent tilt by roughly five times the sensor noise across
+an ordinary day, and it is systematic, so averaging never removes it. The LIS3DH
+die temperature rides in every frame for exactly one purpose: subtracting that
+drift. Without it the system raises a false alarm every afternoon.
+
+**GNSS does not measure subsidence.** A NEO-6M is accurate to metres; subsidence
+is millimetres. It self-localises nodes, disciplines the clock, supplies the
+inter-node baselines the strain calculation divides by, and catches a node that
+has physically moved — a collapse or a theft. The tests assert the limitation
+rather than glossing it.
 
 **Nodes are baselined, not zeroed.** A node is hand-planted on uneven ground, so
 raw tilt mostly describes how the post was hammered in. Its first frame becomes

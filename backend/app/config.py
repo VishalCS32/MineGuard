@@ -28,8 +28,21 @@ class Settings(BaseSettings):
     # Alerting thresholds. These are the operator-facing limits, kept on the
     # server so the dashboard and the mobile app cannot disagree about them.
     tilt_threshold_deg: float = 0.60      # 10 mm/m, the NCB-style disruptive limit
-    crack_threshold_mm: float = 3.00
+    #: NCB "appreciable damage" boundary. Strain is reconstructed from the tilt
+    #: array (see deformation.py), not measured by any single node.
+    strain_threshold_mm_per_m: float = 3.00
     vibration_threshold_mg: float = 400.0
+    #: Degrees per hour. The precursor threshold: ground that is accelerating
+    #: crosses this well before absolute tilt reaches its own limit, which is
+    #: where the early warning actually comes from now that there is no crack
+    #: gauge to catch the first opening.
+    tilt_rate_threshold_deg_per_h: float = 0.05
+    #: Thermal expansion of the mounting post, in milli-degrees of apparent tilt
+    #: per degree C. Measured per node during a commissioning thermal soak; this
+    #: is the design default for the standard post.
+    tilt_drift_mdeg_per_c: float = 18.0
+    #: How far back to look when fitting a node's tilt rate.
+    tilt_rate_window_hours: float = 6.0
 
     # A node unheard from for longer than this is treated as offline.
     node_stale_seconds: int = 180

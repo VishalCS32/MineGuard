@@ -125,7 +125,7 @@ export const IconTilt = ({ size = 18, ...p }: IconProps) => (
   </svg>
 );
 
-export const IconCrack = ({ size = 18, ...p }: IconProps) => (
+export const IconStrain = ({ size = 18, ...p }: IconProps) => (
   <svg {...base(size)} {...p}>
     <path d="M12 2v5l-3 3 4 3-2 4 3 5" />
     <path d="M4 21h16" />

@@ -24,13 +24,19 @@ const dayTimeLabel = (t: number) =>
  * Three stacked panels sharing one time axis, rather than the more common single
  * plot with two y-scales.
  *
- * Tilt (degrees), vibration (mg) and crack width (mm) are three different
+ * Tilt (degrees), vibration (mg) and temperature (degC) are three different
  * quantities on three different scales. Overlaying them on a shared axis, or on
  * two axes, makes their crossings look meaningful when the alignment is entirely
  * arbitrary -- an operator would read a correlation that is not in the data. Small
  * multiples keep every series honestly on its own scale while the shared x-axis
- * still lets you read them against each other in time, which is the actual
- * question: did the crack open when the tilt accelerated?
+ * still lets you read them against each other in time.
+ *
+ * Temperature is the third panel because it is the one confound that can
+ * masquerade as ground movement: the mounting post expands, and the tilt trace
+ * rises with it. The plotted tilt is already corrected for that, so the panel is
+ * there to be *checked against* -- a tilt excursion that tracks the temperature
+ * curve is drift the correction has not fully removed, and a tilt excursion that
+ * ignores it is ground.
  */
 export function DeformationTrend({ history, range, onRange }: Props) {
   // One sample every 15 simulated minutes, so each range is an exact sample count.
@@ -108,17 +114,21 @@ export function DeformationTrend({ history, range, onRange }: Props) {
         </div>
 
         <div>
-          <div className="px-1 text-[10px] font-medium text-ink-3">Crack width (mm)</div>
+          <div className="px-1 text-[10px] font-medium text-ink-3">Post temperature (°C)</div>
           <LineChart
             {...common}
             height={76}
             yTicks={2}
-            yDomain={[0, Math.max(0.5, ...data.map((d) => d.crack)) * 1.2]}
-            unit=" mm"
+            yDomain={
+              data.length
+                ? [Math.min(...data.map((d) => d.tempC)) - 1, Math.max(...data.map((d) => d.tempC)) + 1]
+                : [20, 35]
+            }
+            unit=" °C"
             showLegend={false}
-            formatY={(v) => v.toFixed(2)}
+            formatY={(v) => v.toFixed(1)}
             series={[
-              { key: 'crack', label: 'Crack width', color: '#9863ff', points: data.map((d) => ({ x: d.t, y: d.crack })) },
+              { key: 'tempC', label: 'Post temperature', color: '#9863ff', points: data.map((d) => ({ x: d.t, y: d.tempC })) },
             ]}
           />
         </div>

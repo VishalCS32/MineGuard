@@ -62,7 +62,11 @@ nodes = sa.Table(
     # a re-levelled node must be re-baselined rather than merely re-zeroed.
     sa.Column("baseline_pitch_mdeg", sa.Integer),
     sa.Column("baseline_roll_mdeg", sa.Integer),
-    sa.Column("baseline_tof_mm", sa.Integer),
+    sa.Column("baseline_temp_c_x100", sa.Integer),
+    # Where the node's position came from. A GNSS self-fix is good to metres,
+    # which places it on a map but is far too coarse to be a survey record.
+    sa.Column("position_source", sa.String(16), server_default="survey"),
+    sa.Column("position_acc_m", sa.Float),
     sa.Column("is_active", sa.Boolean, nullable=False, server_default=sa.true()),
     sa.UniqueConstraint("site_id", "addr", name="uq_node_site_addr"),
 )
@@ -77,8 +81,9 @@ telemetry = sa.Table(
     sa.Column("tilt_mdeg", sa.Float),          # derived magnitude, denormalised
     sa.Column("vib_rms_mg", sa.Integer),
     sa.Column("vib_peak_hz", sa.Integer),
-    sa.Column("tof_mm", sa.Integer),
-    sa.Column("crack_ohm", sa.Integer),
+    sa.Column("temp_c_x100", sa.Integer),
+    sa.Column("n_samples", sa.Integer),
+    sa.Column("gnss_status", sa.Integer),
     sa.Column("vbat_mv", sa.Integer),
     sa.Column("rssi", sa.Integer),
     sa.Column("snr_db", sa.Float),
@@ -114,7 +119,8 @@ alerts = sa.Table(
     sa.Column("title", sa.String(128), nullable=False),
     sa.Column("detail", sa.Text),
     sa.Column("tilt_deg", sa.Float),
-    sa.Column("crack_mm", sa.Float),
+    sa.Column("strain_mm_per_m", sa.Float),
+    sa.Column("tilt_rate_deg_per_h", sa.Float),
     sa.Column("vibration_mg", sa.Float),
     sa.Column("damage_class", sa.String(32)),
     sa.Column("hours_to_threshold", sa.Float),
@@ -137,7 +143,7 @@ node_configs = sa.Table(
     sa.Column("tx_power_dbm", sa.Integer, nullable=False, server_default="22"),
     sa.Column("tilt_alert_mdeg", sa.Integer, nullable=False, server_default="2000"),
     sa.Column("vib_alert_mg", sa.Integer, nullable=False, server_default="500"),
-    sa.Column("crack_alert_ohm", sa.Integer, nullable=False, server_default="100"),
+    sa.Column("tilt_rate_alert_mdeg_h", sa.Integer, nullable=False, server_default="150"),
     sa.Column("tilt_offset_pitch", sa.Integer, nullable=False, server_default="0"),
     sa.Column("tilt_offset_roll", sa.Integer, nullable=False, server_default="0"),
     sa.Column("flags", sa.Integer, nullable=False, server_default="15"),

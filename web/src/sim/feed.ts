@@ -23,7 +23,10 @@ import type { DataSource, SourceStatus } from '@/data/source';
 /** Disruptive-tilt limit, 10 mm/m expressed in degrees -- the NCB-style bound at
  *  which services, drainage and structures start to suffer. */
 export const TILT_THRESHOLD_DEG = 0.6;
-export const CRACK_THRESHOLD_MM = 3.0;
+/** NCB "appreciable damage" boundary. Strain has no sensor behind it: the
+ *  backend reconstructs it from the tilt gradient across the array. */
+export const STRAIN_THRESHOLD_MM_PER_M = 3.0;
+export const TILT_RATE_THRESHOLD_DEG_PER_H = 0.05;
 const MM_PER_M_TO_DEG = 180 / Math.PI / 1000;
 
 const MAX_LINK_RANGE_M = 240;
@@ -65,6 +68,8 @@ export class SimulatedSource implements DataSource {
   private readonly trend = new Map<number, TrendPoint[]>();
   private readonly alerts: AlertItem[] = [];
   private readonly lastAlertAt = new Map<number, number>();
+  /** Previous tilt per node, so the rate of change can be differenced. */
+  private readonly lastTilt = new Map<number, { day: number; tilt: number }>();
   private readonly offline = new Set<number>();
   private readonly staticLinks: MeshLink[];
   private timer: number | null = null;
@@ -189,16 +194,25 @@ export class SimulatedSource implements DataSource {
     const tiltRollDeg = tiltY * MM_PER_M_TO_DEG + noise(spec.addr + 7, this.tick) * 0.004;
     const tiltDeg = Math.hypot(tiltPitchDeg, tiltRollDeg);
 
-    // Cracks open in tension only; compression cannot part a bonded gauge.
-    const crackMm = clamp(Math.max(0, strain - 1.0) * 0.35, 0, 12);
+    // This offline model knows the true strain because it *is* the model. Real
+    // hardware does not measure strain at all -- the backend reconstructs it
+    // from how tilt varies between neighbouring nodes. Same quantity, different
+    // provenance, so the dashboard renders it identically either way.
     // Ambient floor plus energy radiated by active settlement.
     const vibrationMg = clamp(
       12 + Math.abs(jitter) * 6 + ph.rate * 2.2 + Math.abs(mv.tilt) * 0.9, 0, 999,
     );
 
+    const prev = this.lastTilt.get(spec.addr);
+    const tiltRateDegPerH = prev ? (tiltDeg - prev.tilt) / Math.max(0.25, (day - prev.day) * 24) : 0;
+    this.lastTilt.set(spec.addr, { day, tilt: tiltDeg });
+
     const riskScore = clamp(
-      Math.max(tiltDeg / TILT_THRESHOLD_DEG, crackMm / CRACK_THRESHOLD_MM) * 0.92 +
-        Math.min(vibrationMg / 400, 1) * 0.08,
+      Math.max(
+        tiltDeg / TILT_THRESHOLD_DEG,
+        Math.abs(strain) / STRAIN_THRESHOLD_MM_PER_M,
+        Math.abs(tiltRateDegPerH) / TILT_RATE_THRESHOLD_DEG_PER_H,
+      ) * 0.9 + Math.min(vibrationMg / 400, 1) * 0.1,
       0,
       1.35,
     );
@@ -218,10 +232,14 @@ export class SimulatedSource implements DataSource {
       tiltPitchDeg,
       tiltRollDeg,
       tiltDeg,
+      tiltRateDegPerH,
       vibrationMg,
-      crackMm,
+      tempC: 28 + 4.5 * Math.cos((2 * Math.PI * ((day % 1) * 24 - 15)) / 24),
       subsidenceMm: mv.subsidenceMm + ph.sub,
+      subsidenceValid: true,
       strainMmPerM: strain,
+      strainValid: true,
+      gnssSats: 7 + ((spec.addr + this.tick) % 5),
       riskScore: Math.min(riskScore, 1),
       risk: riskBand(riskScore),
       damage: classifyDamage(strain, tiltMagnitude),
@@ -245,22 +263,26 @@ export class SimulatedSource implements DataSource {
       this.lastAlertAt.set(n.addr, now);
 
       const critical = n.risk === 'critical';
-      const crackLed = n.crackMm > CRACK_THRESHOLD_MM * 0.55 && n.crackMm / CRACK_THRESHOLD_MM >
-        n.tiltDeg / TILT_THRESHOLD_DEG;
+      // Name the alert after whichever criterion actually drove it, matching
+      // backend/app/ingest.py::_alert_title so the two sources cannot disagree.
+      const rateLed = Math.abs(n.tiltRateDegPerH) >= TILT_RATE_THRESHOLD_DEG_PER_H;
+      const strainLed = Math.abs(n.strainMmPerM) >= STRAIN_THRESHOLD_MM_PER_M;
       this.alerts.unshift({
         id: `${n.addr}-${now}`,
         severity: critical ? 'critical' : n.risk === 'high' ? 'high' : 'medium',
-        title: crackLed
-          ? 'Crack Initiation Detected'
-          : critical
-            ? 'High Deformation Detected'
-            : 'Abnormal Tilt Detected',
+        title: rateLed
+          ? 'Tilt Rate Exceeded'
+          : strainLed
+            ? 'Ground Strain Exceeded'
+            : critical
+              ? 'High Deformation Detected'
+              : 'Abnormal Tilt Detected',
         nodeId: n.id,
         zone: n.zone,
         ts: now,
         metrics: [
           { label: 'Tilt', value: `${n.tiltDeg.toFixed(2)}°` },
-          { label: 'Crack', value: `${n.crackMm.toFixed(2)} mm` },
+          { label: 'Strain', value: `${n.strainMmPerM >= 0 ? '+' : ''}${n.strainMmPerM.toFixed(2)} mm/m` },
           { label: 'Vibration', value: n.vibrationMg > 60 ? 'High' : 'Normal' },
         ],
       });
@@ -298,7 +320,7 @@ export class SimulatedSource implements DataSource {
         pitch: n.tiltPitchDeg,
         roll: n.tiltRollDeg,
         vib: n.vibrationMg,
-        crack: n.crackMm,
+        tempC: n.tempC,
       });
       if (buf.length > HISTORY_POINTS) buf.shift();
     }
@@ -339,8 +361,12 @@ export class SimulatedSource implements DataSource {
       highAlerts: high,
       maxTiltDeg: Math.max(0, ...active.map((n) => n.tiltDeg)),
       tiltThresholdDeg: TILT_THRESHOLD_DEG,
-      maxCrackMm: Math.max(0, ...active.map((n) => n.crackMm)),
-      crackThresholdMm: CRACK_THRESHOLD_MM,
+      maxStrainMmPerM: Math.max(0, ...active.map((n) => Math.abs(n.strainMmPerM))),
+      strainThresholdMmPerM: STRAIN_THRESHOLD_MM_PER_M,
+      maxSubsidenceMm: Math.max(0, ...active.map((n) => n.subsidenceMm)),
+      maxTiltRateDegPerH: Math.max(0, ...active.map((n) => Math.abs(n.tiltRateDegPerH))),
+      tiltRateThresholdDegPerH: TILT_RATE_THRESHOLD_DEG_PER_H,
+      strainResolved: true,
       packetDeliveryPct: delivery,
       uptimePct: 99.1,
       healthy: !active.some((n) => n.risk === 'critical'),

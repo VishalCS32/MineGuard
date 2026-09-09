@@ -1,7 +1,7 @@
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { useEffect, type ReactNode } from 'react';
 import {
-  IconCrack, IconNodes, IconPacket, IconShield, IconTilt, IconWarning,
+  IconStrain, IconNodes, IconPacket, IconShield, IconTilt, IconWarning,
 } from '@/components/ui/icons';
 import type { Kpis } from '@/data/types';
 
@@ -74,9 +74,13 @@ export function KpiRow({ kpis }: { kpis: Kpis }) {
         sub={`Threshold: ${kpis.tiltThresholdDeg.toFixed(2)}°`}
       />
       <Tile
-        index={3} tone="serious" Icon={IconCrack} label="Max Crack Width"
-        value={<><AnimatedNumber value={kpis.maxCrackMm} decimals={2} /> mm</>}
-        sub={`Threshold: ${kpis.crackThresholdMm.toFixed(2)} mm`}
+        index={3} tone="serious" Icon={IconStrain} label="Max Ground Strain"
+        value={kpis.strainResolved
+          ? <><AnimatedNumber value={kpis.maxStrainMmPerM} decimals={2} /> mm/m</>
+          : <span className="text-ink-3">—</span>}
+        sub={kpis.strainResolved
+          ? `Threshold: ${kpis.strainThresholdMmPerM.toFixed(2)} mm/m`
+          : 'Array too sparse to resolve'}
       />
       <Tile
         index={4} tone="s3" Icon={IconPacket} label="Packet Delivery"

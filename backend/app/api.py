@@ -16,6 +16,7 @@ from . import broadcaster
 from .config import Settings, get_settings
 from .db import session_dep
 from .ingest import ingest_frames
+from .risk import corrected_tilt_mdeg
 from .models import alerts as alerts_t
 from .models import node_configs, nodes as nodes_t, sites as sites_t, telemetry
 from .state import build_snapshot
@@ -115,7 +116,8 @@ async def recalibrate(addr: int, session: SessionDep) -> dict[str, Any]:
     """
     result = await session.execute(
         nodes_t.update().where(nodes_t.c.addr == addr)
-        .values(baseline_pitch_mdeg=None, baseline_roll_mdeg=None, baseline_tof_mm=None))
+        .values(baseline_pitch_mdeg=None, baseline_roll_mdeg=None,
+                baseline_temp_c_x100=None))
     if result.rowcount == 0:
         raise HTTPException(404, f"no node 0x{addr:04X}")
     await session.commit()
@@ -124,7 +126,7 @@ async def recalibrate(addr: int, session: SessionDep) -> dict[str, Any]:
 
 # ----------------------------------------------------------------- telemetry
 @router.get("/nodes/{addr}/history")
-async def node_history(addr: int, session: SessionDep,
+async def node_history(addr: int, session: SessionDep, settings: SettingsDep,
                        range: str = Query("24H", pattern="^(1H|6H|24H|7D)$")) -> list[dict]:
     node = (await session.execute(
         sa.select(nodes_t).where(nodes_t.c.addr == addr))).mappings().first()
@@ -136,26 +138,34 @@ async def node_history(addr: int, session: SessionDep,
     # chart of that would disagree with the gauges, which are baseline-corrected.
     base_pitch = node["baseline_pitch_mdeg"] or 0
     base_roll = node["baseline_roll_mdeg"] or 0
+    base_temp = (node["baseline_temp_c_x100"] or 0) / 100.0
 
     limit = RANGE_POINTS[range]
     rows = (await session.execute(
         sa.select(telemetry.c.time, telemetry.c.pitch_mdeg, telemetry.c.roll_mdeg,
-                  telemetry.c.vib_rms_mg, telemetry.c.crack_ohm)
+                  telemetry.c.vib_rms_mg, telemetry.c.temp_c_x100)
         .where(telemetry.c.node_id == node["id"])
         .order_by(telemetry.c.time.desc()).limit(limit)
     )).mappings().all()
 
+    # Plotted temperature-corrected, for the same reason it is plotted
+    # baseline-corrected: an uncorrected trace shows the daily thermal swing of
+    # the post, which is larger than the movement being looked for and would
+    # make every chart look like a sine wave with the signal buried in it.
+    drift = settings.tilt_drift_mdeg_per_c
     out = []
     for r in reversed(rows):   # oldest first, as the chart expects
         t = r["time"]
         t = t if t.tzinfo else t.replace(tzinfo=timezone.utc)
-        ohms = (r["crack_ohm"] or 0) * 10.0
+        temp = (r["temp_c_x100"] or 0) / 100.0
         out.append({
             "t": int(t.timestamp() * 1000),
-            "pitch": ((r["pitch_mdeg"] or 0) - base_pitch) / 1000.0,
-            "roll": ((r["roll_mdeg"] or 0) - base_roll) / 1000.0,
+            "pitch": corrected_tilt_mdeg(r["pitch_mdeg"] or 0, base_pitch,
+                                         temp, base_temp, drift) / 1000.0,
+            "roll": corrected_tilt_mdeg(r["roll_mdeg"] or 0, base_roll,
+                                        temp, base_temp, drift) / 1000.0,
             "vib": r["vib_rms_mg"] or 0,
-            "crack": max(0.0, (ohms - 1000.0) / 900.0) ** (1 / 1.6) * 0.35 if ohms > 1000 else 0.0,
+            "tempC": temp,
         })
     return out
 
@@ -204,7 +214,7 @@ class ConfigPush(BaseModel):
     tx_power_dbm: int = Field(22, ge=10, le=22)
     tilt_alert_mdeg: int = Field(2000, ge=10, le=32000)
     vib_alert_mg: int = Field(500, ge=10, le=60000)
-    crack_alert_ohm: int = Field(100, ge=1, le=60000)
+    tilt_rate_alert_mdeg_h: int = Field(150, ge=1, le=60000)
     tilt_offset_pitch: int = Field(0, ge=-32768, le=32767)
     tilt_offset_roll: int = Field(0, ge=-32768, le=32767)
     flags: int = Field(15, ge=0, le=255)
@@ -276,6 +286,9 @@ class NodeSpecIn(BaseModel):
     # explicitly is how a real commissioning record enters the system.
     baseline_pitch_mdeg: int | None = None
     baseline_roll_mdeg: int | None = None
+    #: The temperature the survey was taken at. Drift is only removable relative
+    #: to a known reference, so a baseline without one is only half a baseline.
+    baseline_temp_c_x100: int | None = None
 
 
 class ProvisionRequest(BaseModel):

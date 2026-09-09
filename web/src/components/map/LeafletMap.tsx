@@ -209,7 +209,7 @@ export function LeafletMap({
       }
       marker.setOpacity(n.online ? 1 : 0.45);
       const detail = n.online
-        ? `Tilt ${n.tiltDeg.toFixed(2)}° · Crack ${n.crackMm.toFixed(2)} mm · ${n.hops} hop${n.hops === 1 ? '' : 's'}`
+        ? `Tilt ${n.tiltDeg.toFixed(2)}° · Strain ${n.strainMmPerM >= 0 ? '+' : ''}${n.strainMmPerM.toFixed(2)} mm/m · ${n.hops} hop${n.hops === 1 ? '' : 's'}`
         : 'Offline';
       marker.getElement()?.setAttribute(
         'title', `Node ${n.id} · ${n.zone}\n${detail}\nShift-click to toggle power`);

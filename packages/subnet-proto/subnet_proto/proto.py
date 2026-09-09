@@ -35,14 +35,15 @@ class MsgType(IntEnum):
     CONFIG_ACK = 0x4
     NEIGHBOR = 0x5
     TIME_SYNC = 0x6
+    POSITION = 0x7
 
 
 class EventCode(IntEnum):
-    TILT_RATE = 0x01
-    TILT_ABSOLUTE = 0x02
-    CRACK_OPEN = 0x03
+    TILT_RATE = 0x01        # tilt rate over threshold
+    TILT_ABSOLUTE = 0x02    # absolute tilt over threshold
+    TILT_ACCEL = 0x03       # tilt rate is itself increasing -- the precursor
     VIBRATION = 0x04
-    DISPLACEMENT = 0x05
+    DISPLACEMENT = 0x05     # GNSS: node has physically moved metres
     NODE_TAMPER = 0x06
     LOW_BATTERY = 0x07
 
@@ -62,18 +63,24 @@ class CfgStatus(IntEnum):
 
 # Telemetry flag bits
 TLM_TILT_FAULT = 1 << 0
-TLM_TOF_FAULT = 1 << 1
-TLM_CRACK_FAULT = 1 << 2
+TLM_GNSS_FAULT = 1 << 1
+TLM_VIB_FAULT = 1 << 2
 TLM_UNCALIBRATED = 1 << 3
 TLM_LOW_BATTERY = 1 << 4
 TLM_RELAYED = 1 << 5
 
 # Config flag bits
 CFG_RELAY_ENABLED = 1 << 0
-CFG_TOF_ENABLED = 1 << 1
-CFG_CRACK_ENABLED = 1 << 2
+CFG_GNSS_ENABLED = 1 << 1
+CFG_VIB_ENABLED = 1 << 2
 CFG_DEEP_SLEEP = 1 << 3
 CFG_RECALIBRATE = 1 << 4
+
+# GNSS fix quality, packed into the low 2 bits of ``gnss_status``.
+GNSS_NO_FIX = 0
+GNSS_FIX_2D = 1
+GNSS_FIX_3D = 2
+GNSS_FIX_DGPS = 3
 
 
 class ProtocolError(ValueError):
@@ -161,9 +168,17 @@ class Payload:
 
 @dataclass(slots=True)
 class Telemetry(Payload):
-    """22 B periodic sensor frame. Feature extraction already done on-node."""
+    """22 B periodic sensor frame. Feature extraction already done on-node.
 
-    _S: ClassVar[struct.Struct] = struct.Struct("<IhhHHHHHbBBB")
+    Every field here comes from one of three sensors: the LIS3DH (attitude,
+    vibration and die temperature), the vibration sensor, and the GNSS receiver.
+    There is no displacement ranger and no crack gauge -- both quantities are
+    recovered from the tilt *field* instead, because ``U = B*T`` and
+    ``strain = B*dT/dx`` (see ``ml/simulator/physics.py``). A single node cannot
+    measure them; an array of nodes can, and the array is what we deploy.
+    """
+
+    _S: ClassVar[struct.Struct] = struct.Struct("<IhhHHhBBHbBBB")
     MSG_TYPE: ClassVar[MsgType] = MsgType.TELEMETRY
 
     t_epoch: int
@@ -171,8 +186,16 @@ class Telemetry(Payload):
     roll_mdeg: int = 0
     vib_rms_mg: int = 0
     vib_peak_hz: int = 0
-    tof_mm: int = 0
-    crack_ohm: int = 0        # raw field = ohms / 10
+    #: LIS3DH die temperature, centi-degrees C. Not a weather reading: thermal
+    #: expansion of the mounting post drifts apparent tilt by ~18 mdeg/degC,
+    #: which over a 15 degC day swamps the 50 mdeg sensor noise five times over.
+    #: Without this field that drift is indistinguishable from ground movement.
+    temp_c_x100: int = 0
+    #: Raw samples averaged into this frame. The server needs it to know this
+    #: reading's noise (sigma/sqrt(n)) before differentiating the tilt field.
+    n_samples: int = 1
+    #: Low 2 bits fix quality (GNSS_*), high 6 bits satellite count.
+    gnss_status: int = 0
     vbat_mv: int = 0
     rssi: int = 0
     snr: int = 0              # raw field = (dB + 20) * 4
@@ -182,8 +205,8 @@ class Telemetry(Payload):
     def pack(self) -> bytes:
         return self._S.pack(
             self.t_epoch, self.pitch_mdeg, self.roll_mdeg, self.vib_rms_mg,
-            self.vib_peak_hz, self.tof_mm, self.crack_ohm, self.vbat_mv,
-            self.rssi, self.snr, self.flags, self.reserved)
+            self.vib_peak_hz, self.temp_c_x100, self.n_samples, self.gnss_status,
+            self.vbat_mv, self.rssi, self.snr, self.flags, self.reserved)
 
     @classmethod
     def unpack(cls, b: bytes) -> "Telemetry":
@@ -206,8 +229,21 @@ class Telemetry(Payload):
         return (self.pitch_mdeg**2 + self.roll_mdeg**2) ** 0.5 / 1000.0
 
     @property
-    def crack_ohms(self) -> float:
-        return self.crack_ohm * 10.0
+    def temp_c(self) -> float:
+        return self.temp_c_x100 / 100.0
+
+    @property
+    def gnss_fix(self) -> int:
+        """Fix quality: one of the GNSS_* constants."""
+        return self.gnss_status & 0x03
+
+    @property
+    def gnss_sats(self) -> int:
+        return (self.gnss_status >> 2) & 0x3F
+
+    @property
+    def has_fix(self) -> bool:
+        return self.gnss_fix >= GNSS_FIX_2D
 
     @property
     def snr_db(self) -> float:
@@ -216,6 +252,11 @@ class Telemetry(Payload):
     @property
     def vbat_volts(self) -> float:
         return self.vbat_mv / 1000.0
+
+
+def pack_gnss_status(fix: int, sats: int) -> int:
+    """Build the packed ``gnss_status`` byte from a fix quality and sat count."""
+    return (fix & 0x03) | ((min(sats, 63) & 0x3F) << 2)
 
 
 @dataclass(slots=True)
@@ -256,10 +297,13 @@ class Config(Payload):
     tx_power_dbm: int = 22
     tilt_alert_mdeg: int = 2000
     vib_alert_mg: int = 500
-    crack_alert_ohm: int = 100
+    #: Tilt *rate* in milli-degrees per hour. With no crack gauge this is the
+    #: node's primary early-warning trigger: accelerating tilt precedes failure,
+    #: and a rate threshold fires while absolute tilt is still well inside limits.
+    tilt_rate_alert_mdeg_h: int = 150
     tilt_offset_pitch: int = 0
     tilt_offset_roll: int = 0
-    flags: int = CFG_RELAY_ENABLED | CFG_TOF_ENABLED | CFG_CRACK_ENABLED | CFG_DEEP_SLEEP
+    flags: int = CFG_RELAY_ENABLED | CFG_GNSS_ENABLED | CFG_VIB_ENABLED | CFG_DEEP_SLEEP
     cfg_hash: int = 0
 
     def _body(self) -> bytes:
@@ -267,7 +311,8 @@ class Config(Payload):
         return struct.pack(
             "<HHHBHHHhhB", self.cfg_version, self.sample_interval_s, self.wor_period_ms,
             self.tx_power_dbm, self.tilt_alert_mdeg, self.vib_alert_mg,
-            self.crack_alert_ohm, self.tilt_offset_pitch, self.tilt_offset_roll, self.flags)
+            self.tilt_rate_alert_mdeg_h, self.tilt_offset_pitch, self.tilt_offset_roll,
+            self.flags)
 
     def compute_hash(self) -> int:
         return crc16(self._body())
@@ -380,6 +425,69 @@ class TimeSync(Payload):
         return cls(*cls._S.unpack(b))
 
 
+@dataclass(slots=True)
+class Position(Payload):
+    """17 B GNSS report. Low rate -- position is static until it isn't.
+
+    Deliberately not part of TELEMETRY. A node's position does not change from
+    one duty cycle to the next, so spending 10 bytes on it every minute would
+    burn airtime to retransmit a constant. It is sent at commissioning, then
+    rarely, then immediately if the node detects it has moved.
+
+    This does *not* measure subsidence. A NEO-6M is metre-scale and subsidence is
+    millimetre-scale, so the two are three orders of magnitude apart. What it
+    does measure: where the node is (self-localisation, so no operator has to
+    drop a pin), the inter-node baselines the strain calculation divides by, and
+    gross displacement -- a node that has moved metres is a collapse or a theft,
+    and both are worth an immediate frame.
+    """
+
+    _S: ClassVar[struct.Struct] = struct.Struct("<IiihHB")
+    MSG_TYPE: ClassVar[MsgType] = MsgType.POSITION
+
+    t_epoch: int
+    lat_e7: int = 0           # degrees * 1e7
+    lon_e7: int = 0           # degrees * 1e7
+    alt_m: int = 0            # metres above ellipsoid
+    h_acc_cm: int = 0         # horizontal accuracy estimate, centimetres
+    gnss_status: int = 0      # same packing as Telemetry.gnss_status
+
+    def pack(self) -> bytes:
+        return self._S.pack(self.t_epoch, self.lat_e7, self.lon_e7,
+                            self.alt_m, self.h_acc_cm, self.gnss_status)
+
+    @classmethod
+    def unpack(cls, b: bytes) -> "Position":
+        if len(b) != cls._S.size:
+            raise ProtocolError(f"position payload is {len(b)} B, expected {cls._S.size} B")
+        return cls(*cls._S.unpack(b))
+
+    @property
+    def lat(self) -> float:
+        return self.lat_e7 / 1e7
+
+    @property
+    def lon(self) -> float:
+        return self.lon_e7 / 1e7
+
+    @property
+    def h_acc_m(self) -> float:
+        return self.h_acc_cm / 100.0
+
+    @property
+    def gnss_fix(self) -> int:
+        return self.gnss_status & 0x03
+
+    @property
+    def gnss_sats(self) -> int:
+        return (self.gnss_status >> 2) & 0x3F
+
+    @property
+    def is_usable(self) -> bool:
+        """A 2-D fix with no altitude is not good enough to place a node."""
+        return self.gnss_fix >= GNSS_FIX_3D and self.h_acc_cm > 0
+
+
 _DECODERS: dict[MsgType, type] = {
     MsgType.TELEMETRY: Telemetry,
     MsgType.EVENT: Event,
@@ -387,6 +495,7 @@ _DECODERS: dict[MsgType, type] = {
     MsgType.CONFIG_ACK: ConfigAck,
     MsgType.NEIGHBOR: NeighborReport,
     MsgType.TIME_SYNC: TimeSync,
+    MsgType.POSITION: Position,
 }
 
 

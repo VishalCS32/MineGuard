@@ -6,15 +6,22 @@ import time
 
 import pytest
 from subnet_proto import (
-    ADDR_GATEWAY, CfgStatus, Config, ConfigAck, Event, EventCode, Neighbor,
-    NeighborReport, Severity, Telemetry,
+    ADDR_GATEWAY, GNSS_FIX_3D, CfgStatus, Config, ConfigAck, Event, EventCode, Neighbor,
+    NeighborReport, Position, Severity, Telemetry, pack_gnss_status,
 )
 
+#: The commissioning temperature every fixture frame is taken at. Held constant
+#: unless a test is specifically about thermal drift, so that tilt assertions are
+#: about ground movement and nothing else.
+REF_TEMP_C = 28.0
 
-def tlm(pitch: int = 0, roll: int = 0, *, crack: int = 100, vib: int = 20,
+
+def tlm(pitch: int = 0, roll: int = 0, *, temp_c: float = REF_TEMP_C, vib: int = 20,
         t: int | None = None) -> Telemetry:
     return Telemetry(t_epoch=t or int(time.time()), pitch_mdeg=pitch, roll_mdeg=roll,
-                     vib_rms_mg=vib, crack_ohm=crack, vbat_mv=3900, rssi=-70, snr=112)
+                     vib_rms_mg=vib, temp_c_x100=int(temp_c * 100), n_samples=32,
+                     gnss_status=pack_gnss_status(GNSS_FIX_3D, 9),
+                     vbat_mv=3900, rssi=-70, snr=112)
 
 
 async def post_frames(client, b64, *frames) -> dict:
@@ -141,11 +148,11 @@ class TestAlerts:
         assert len(((await provisioned.get("/api/alerts")).json())) == 1
 
     async def test_node_event_frame_raises_an_alert(self, provisioned, b64):
-        evt = Event(t_epoch=int(time.time()), event_code=EventCode.CRACK_OPEN,
+        evt = Event(t_epoch=int(time.time()), event_code=EventCode.TILT_ACCEL,
                     severity=Severity.CRITICAL, value=4200, threshold=2000)
         await post_frames(provisioned, b64, evt.frame(src=0x11, seq=1))
         alerts = (await provisioned.get("/api/alerts")).json()
-        assert alerts[0]["title"] == "Crack Initiation Detected"
+        assert alerts[0]["title"] == "Tilt Accelerating"
 
     async def test_ack_and_resolve(self, provisioned, b64):
         await post_frames(provisioned, b64, tlm().frame(src=0x10, seq=1))
@@ -237,3 +244,115 @@ class TestOperations:
     async def test_stats(self, provisioned, b64):
         await post_frames(provisioned, b64, tlm().frame(src=0x10, seq=1))
         assert (await provisioned.get("/api/stats")).json()["framesTotal"] == 1
+
+
+class TestThermalDrift:
+    """The correction that decides whether this hardware is usable at all.
+
+    Post expansion swings apparent tilt by several times the sensor noise across
+    an ordinary day. Without the temperature channel that is indistinguishable
+    from ground movement, and the system cries wolf every afternoon.
+    """
+
+    async def test_a_temperature_swing_alone_is_not_ground_movement(self, provisioned, b64):
+        await post_frames(provisioned, b64, tlm(pitch=4000, temp_c=REF_TEMP_C).frame(src=0x10, seq=1))
+        # 15 degC hotter, and the post has expanded by 15 * 18 = 270 mdeg.
+        hot = tlm(pitch=4000 + 270, roll=270, temp_c=REF_TEMP_C + 15.0)
+        await post_frames(provisioned, b64, hot.frame(src=0x10, seq=2))
+
+        snap = (await provisioned.get("/api/snapshot")).json()
+        node = next(n for n in snap["nodes"] if n["addr"] == 0x10)
+        assert node["tiltDeg"] == pytest.approx(0.0, abs=0.02)
+        assert snap["alerts"] == []
+
+    async def test_real_movement_during_a_temperature_swing_still_reads(self, provisioned, b64):
+        """And the correction must not swallow the signal along with the drift."""
+        await post_frames(provisioned, b64, tlm(pitch=4000, temp_c=REF_TEMP_C).frame(src=0x10, seq=1))
+        moved = tlm(pitch=4000 + 270 + 800, roll=270, temp_c=REF_TEMP_C + 15.0)
+        await post_frames(provisioned, b64, moved.frame(src=0x10, seq=2))
+
+        snap = (await provisioned.get("/api/snapshot")).json()
+        node = next(n for n in snap["nodes"] if n["addr"] == 0x10)
+        assert node["tiltDeg"] == pytest.approx(0.8, abs=0.02)
+
+    async def test_history_is_temperature_corrected_like_the_gauges(self, provisioned, b64):
+        await post_frames(provisioned, b64, tlm(pitch=4000, temp_c=REF_TEMP_C).frame(src=0x10, seq=1))
+        await post_frames(provisioned, b64,
+                          tlm(pitch=4270, temp_c=REF_TEMP_C + 15.0).frame(src=0x10, seq=2))
+        history = (await provisioned.get("/api/nodes/16/history?range=24H")).json()
+        assert history[-1]["pitch"] == pytest.approx(0.0, abs=1e-6)
+        assert history[-1]["tempC"] == pytest.approx(REF_TEMP_C + 15.0, abs=0.01)
+
+
+class TestReconstructedField:
+    """Strain has no sensor behind it any more -- it comes from the array."""
+
+    async def test_strain_is_reported_for_a_placed_pair(self, provisioned, b64):
+        await post_frames(provisioned, b64,
+                          tlm().frame(src=0x10, seq=1), tlm().frame(src=0x11, seq=1))
+        # 0x10 at x=0 stays put; 0x11 at x=150 m tilts. That gradient is strain.
+        await post_frames(provisioned, b64,
+                          tlm().frame(src=0x10, seq=2), tlm(pitch=500).frame(src=0x11, seq=2))
+        snap = (await provisioned.get("/api/snapshot")).json()
+        node = next(n for n in snap["nodes"] if n["addr"] == 0x11)
+        assert node["strainValid"]
+        assert abs(node["strainMmPerM"]) > 0
+
+    async def test_an_unplaced_node_reports_no_strain_rather_than_zero(self, provisioned, b64):
+        """Zero strain renders as a healthy node. Unknown must not."""
+        await post_frames(provisioned, b64, tlm(pitch=500).frame(src=0x99, seq=1))
+        snap = (await provisioned.get("/api/snapshot")).json()
+        node = next(n for n in snap["nodes"] if n["addr"] == 0x99)
+        assert not node["strainValid"]
+
+    async def test_subsidence_is_flagged_when_the_anchor_sits_inside_the_trough(
+            self, provisioned, b64):
+        await post_frames(provisioned, b64,
+                          tlm().frame(src=0x10, seq=1), tlm().frame(src=0x11, seq=1))
+        snap = (await provisioned.get("/api/snapshot")).json()
+        # The westernmost fixture node is at x=0, on the panel edge -- not the
+        # full radius of influence beyond it, so depths are provisional.
+        assert all(not n["subsidenceValid"] for n in snap["nodes"] if n["online"])
+
+
+class TestGnss:
+    async def test_a_fix_places_a_node_that_was_never_surveyed(self, provisioned, b64):
+        await post_frames(provisioned, b64, tlm().frame(src=0x42, seq=1))
+        pos = Position(t_epoch=int(time.time()), lat_e7=237500000, lon_e7=864200000,
+                       alt_m=210, h_acc_cm=250,
+                       gnss_status=pack_gnss_status(GNSS_FIX_3D, 9))
+        await post_frames(provisioned, b64, pos.frame(src=0x42, seq=2))
+
+        node = next(n for n in (await provisioned.get("/api/nodes")).json()
+                    if n["addr"] == 0x42)
+        assert node["lat"] == pytest.approx(23.75, abs=1e-4)
+        assert node["position_source"] == "gnss"
+
+    async def test_a_node_that_has_moved_metres_raises_an_alert(self, provisioned, b64):
+        await post_frames(provisioned, b64, tlm().frame(src=0x10, seq=1))
+        # ~110 m north of its surveyed position: a collapse, or a theft.
+        pos = Position(t_epoch=int(time.time()), lat_e7=int(23.751 * 1e7),
+                       lon_e7=int(86.42 * 1e7), alt_m=210, h_acc_cm=250,
+                       gnss_status=pack_gnss_status(GNSS_FIX_3D, 9))
+        await post_frames(provisioned, b64, pos.frame(src=0x10, seq=2))
+        titles = [a["title"] for a in (await provisioned.get("/api/alerts")).json()]
+        assert "Node Displaced" in titles
+
+    async def test_metre_scale_noise_does_not_raise_an_alert(self, provisioned, b64):
+        """Ordinary GNSS wander must never look like a collapse."""
+        await post_frames(provisioned, b64, tlm().frame(src=0x10, seq=1))
+        pos = Position(t_epoch=int(time.time()), lat_e7=int(23.75002 * 1e7),
+                       lon_e7=int(86.42 * 1e7), alt_m=210, h_acc_cm=250,
+                       gnss_status=pack_gnss_status(GNSS_FIX_3D, 9))
+        await post_frames(provisioned, b64, pos.frame(src=0x10, seq=2))
+        titles = [a["title"] for a in (await provisioned.get("/api/alerts")).json()]
+        assert "Node Displaced" not in titles
+
+    async def test_an_unusable_fix_is_ignored(self, provisioned, b64):
+        await post_frames(provisioned, b64, tlm().frame(src=0x43, seq=1))
+        pos = Position(t_epoch=int(time.time()), lat_e7=237500000, lon_e7=864200000,
+                       h_acc_cm=0, gnss_status=pack_gnss_status(1, 3))   # 2-D only
+        await post_frames(provisioned, b64, pos.frame(src=0x43, seq=2))
+        node = next(n for n in (await provisioned.get("/api/nodes")).json()
+                    if n["addr"] == 0x43)
+        assert node["lat"] is None

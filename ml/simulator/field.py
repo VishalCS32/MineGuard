@@ -13,7 +13,14 @@ from dataclasses import dataclass
 
 from .physics import PanelGeometry
 
-__all__ = ["NodeSpec", "SitePreset", "SITE_PRESETS", "build_grid_field", "local_to_wgs84"]
+__all__ = ["NodeSpec", "SitePreset", "SITE_PRESETS", "build_grid_field",
+           "build_transect_field", "local_to_wgs84", "max_sensing_spacing_m"]
+
+#: Node spacing must be at most the radius of influence over this before the
+#: curvature of the subsidence trough can be resolved. Mirrored by
+#: ``backend/app/deformation.py``, which does the reconstruction that depends on
+#: it; ``backend/tests/test_deformation.py`` asserts the two agree.
+SENSING_SPACING_DIVISOR = 3.0
 
 EARTH_RADIUS_M = 6_378_137.0
 
@@ -38,7 +45,6 @@ class NodeSpec:
     y_m: float
     lat: float
     lon: float
-    ref_post_distance_mm: int = 2500   # ToF baseline to its reference post
     is_edge: bool = False              # sits over the panel rim -> earliest warning
 
 
@@ -74,9 +80,77 @@ SITE_PRESETS: dict[str, SitePreset] = {
 }
 
 
+def max_sensing_spacing_m(seam_depth_m: float, angle_of_draw_deg: float = 35.0) -> float:
+    """Widest node spacing that still resolves strain, in metres.
+
+    With no crack gauge on the node, strain is recovered by differentiating the
+    tilt field across the array, and a difference taken across too wide a gap
+    averages over the curvature instead of measuring it. That makes spacing a
+    *sensing* constraint -- and it is the one that binds: for a 150 m seam it
+    demands ~71 m against the radio's ~241 m, so a field planned for
+    connectivity alone reports tilt correctly and strain not at all.
+    """
+    r = seam_depth_m / math.tan(math.radians(angle_of_draw_deg))
+    return r / SENSING_SPACING_DIVISOR
+
+
+def build_transect_field(preset: SitePreset, n_nodes: int = 21,
+                         first_addr: int = 0x0010, y_m: float = 0.0,
+                         spacing_m: float | None = None) -> list[NodeSpec]:
+    """A single dense line of nodes along the direction of face advance.
+
+    This is what a subsidence survey actually looks like. Monitoring practice
+    has used survey *lines* over longwall panels for a century, and the reason
+    applies exactly to a tilt array: the quantities of interest -- subsidence,
+    tilt, curvature, strain -- are derivatives and integrals taken *along* the
+    line of advance, so resolution along that line is what buys accuracy, and
+    breadth across it mostly buys duplicates.
+
+    It matters here because of arithmetic. Covering the whole panel as a grid at
+    the spacing strain reconstruction demands needs several times more nodes
+    than a real budget stretches to. The same nodes arranged as one transect
+    resolve the full profile properly instead of sampling all of it too coarsely
+    to differentiate -- a complete answer along one line, rather than an
+    unusable answer everywhere.
+
+    The line deliberately runs from a full radius of influence before the panel
+    to a full radius past it: the ends are the undisturbed anchors that make the
+    subsidence integral recoverable, and the rim crossings in between are where
+    tilt and strain peak.
+    """
+    if n_nodes < 3:
+        raise ValueError("a transect needs at least three nodes")
+    p = preset.panel
+    r = p.radius_of_influence_m
+    lo, hi = p.x_start - r, p.x_end + r
+    if spacing_m is None:
+        spacing_m = (hi - lo) / (n_nodes - 1)
+
+    required = max_sensing_spacing_m(p.seam_depth_m, p.angle_of_draw_deg)
+    if spacing_m > required:
+        # Not an error: a coarser line still measures tilt honestly. But strain
+        # will not reconstruct, and that should be visible at planning time
+        # rather than discovered as a flat line on a dashboard.
+        import warnings
+        warnings.warn(
+            f"transect spacing {spacing_m:.0f} m exceeds the {required:.0f} m "
+            f"needed to resolve strain; tilt will be sound, strain will not",
+            stacklevel=2)
+
+    edge_band = 0.2 * r
+    nodes: list[NodeSpec] = []
+    for i in range(n_nodes):
+        x = lo + i * spacing_m
+        lat, lon = local_to_wgs84(preset.origin_lat, preset.origin_lon, x, y_m)
+        nodes.append(NodeSpec(
+            addr=first_addr + i, label=f"T-{i + 1:02d}",
+            x_m=x, y_m=y_m, lat=lat, lon=lon,
+            is_edge=min(abs(x - p.x_start), abs(x - p.x_end)) <= edge_band))
+    return nodes
+
+
 def build_grid_field(preset: SitePreset, cols: int = 5, rows: int = 3,
                      margin_fraction: float = 0.35, first_addr: int = 0x0010,
-                     ref_post_distance_mm: int = 2500,
                      max_spacing_m: float | None = None) -> list[NodeSpec]:
     """Lay out ``cols x rows`` nodes over the panel, anchored on the panel edges.
 
@@ -88,13 +162,18 @@ def build_grid_field(preset: SitePreset, cols: int = 5, rows: int = 3,
     across the interior. Given a fixed node budget this buys earlier warning for
     free, which matters when nodes cost money and a panel is large.
 
-    ``max_spacing_m`` closes the loop with the radio. Sensing coverage and radio
-    connectivity are separate constraints and they pull in opposite directions;
-    satisfying only the first yields a field that measures the ground perfectly
-    and cannot deliver a frame home. When set, any gap wider than this is
-    subdivided until every neighbour is in range, so the node count falls out of
-    the physics and the link budget together instead of being guessed. Pass
-    ``RadioModel().max_reliable_spacing_m()`` for it.
+    ``max_spacing_m`` closes the loop with the two independent constraints on
+    spacing, and the node count falls out of them instead of being guessed:
+
+    * *connectivity* -- ``RadioModel().max_reliable_spacing_m()``. Space wider
+      than this and frames do not get home.
+    * *measurement* -- ``max_sensing_spacing_m()``. Space wider than this and
+      strain cannot be reconstructed from the tilt field, because the difference
+      between neighbours stops representing the local curvature.
+
+    Pass the smaller of the two. It is the sensing one, by roughly a factor of
+    three, which is easy to miss when planning a field around radio range alone.
+    Any gap wider than the limit is subdivided until it complies.
     """
     if cols < 2 or rows < 2:
         raise ValueError("a deformation field needs at least a 2x2 grid")
@@ -124,7 +203,6 @@ def build_grid_field(preset: SitePreset, cols: int = 5, rows: int = 3,
                 addr=addr,
                 label=f"N{row + 1}-{col + 1}",
                 x_m=x, y_m=y, lat=lat, lon=lon,
-                ref_post_distance_mm=ref_post_distance_mm,
                 is_edge=near_x or near_y))
             addr += 1
     return nodes
