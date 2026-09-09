@@ -28,6 +28,7 @@ from subnet_proto import (
     Severity,
     Telemetry,
     TimeSync,
+    Position,
     crc16,
     decode,
 )
@@ -40,7 +41,8 @@ FIRMWARE_COMMON = REPO / "firmware" / "common"
 class TestRoundTrip:
     def test_telemetry(self):
         tlm = Telemetry(t_epoch=1767225600, pitch_mdeg=-1234, roll_mdeg=5678,
-                        vib_rms_mg=412, vib_peak_hz=37, tof_mm=2450, crack_ohm=1500,
+                        vib_rms_mg=412, vib_peak_hz=37, temp_c_x100=2735, n_samples=32,
+                        gnss_status=proto.pack_gnss_status(proto.GNSS_FIX_3D, 9),
                         vbat_mv=3987, rssi=-87, snr=122, flags=proto.TLM_RELAYED)
         header, decoded = decode(tlm.frame(src=0x42, seq=0x1337, hops=2))
         assert header.msg_type is MsgType.TELEMETRY
@@ -50,6 +52,33 @@ class TestRoundTrip:
     def test_telemetry_frame_is_34_bytes(self):
         """Airtime budget: header + telemetry must stay small at SF9."""
         assert len(Telemetry(t_epoch=0).frame(src=1)) == 34
+
+    def test_position(self):
+        pos = Position(t_epoch=1767225600, lat_e7=236780000, lon_e7=863950000,
+                       alt_m=214, h_acc_cm=250,
+                       gnss_status=proto.pack_gnss_status(proto.GNSS_FIX_3D, 11))
+        header, decoded = decode(pos.frame(src=0x21, seq=5))
+        assert header.msg_type is MsgType.POSITION
+        assert decoded == pos
+        assert decoded.lat == pytest.approx(23.678)
+        assert decoded.lon == pytest.approx(86.395)
+        assert decoded.h_acc_m == pytest.approx(2.5)
+        assert decoded.is_usable
+
+    def test_position_with_only_a_2d_fix_is_not_usable(self):
+        """Placing a node from a 2-D fix would put it at the wrong elevation,
+        and elevation is what the subsidence profile is measured against."""
+        pos = Position(t_epoch=0, lat_e7=236780000, lon_e7=863950000, h_acc_cm=900,
+                       gnss_status=proto.pack_gnss_status(proto.GNSS_FIX_2D, 4))
+        assert not pos.is_usable
+
+    def test_southern_and_western_hemispheres_survive_the_round_trip(self):
+        """lat/lon are signed; an unsigned slip would mirror the site."""
+        pos = Position(t_epoch=0, lat_e7=-236780000, lon_e7=-863950000, alt_m=-30)
+        _, decoded = decode(pos.frame(src=1))
+        assert decoded.lat == pytest.approx(-23.678)
+        assert decoded.lon == pytest.approx(-86.395)
+        assert decoded.alt_m == -30
 
     def test_event(self):
         evt = Event(t_epoch=1767225600, event_code=EventCode.TILT_RATE,
@@ -149,12 +178,32 @@ class TestRejectsCorruption:
 class TestEngineeringUnits:
     def test_conversions(self):
         tlm = Telemetry(t_epoch=0, pitch_mdeg=-1234, roll_mdeg=5678,
-                        crack_ohm=1500, snr=122, vbat_mv=3987)
+                        temp_c_x100=-450, snr=122, vbat_mv=3987)
         assert tlm.pitch_deg == pytest.approx(-1.234)
         assert tlm.roll_deg == pytest.approx(5.678)
-        assert tlm.crack_ohms == pytest.approx(15000.0)
+        assert tlm.temp_c == pytest.approx(-4.50)
         assert tlm.snr_db == pytest.approx(10.5)
         assert tlm.vbat_volts == pytest.approx(3.987)
+
+    def test_gnss_status_packs_fix_and_sat_count(self):
+        """One byte carries both, so the unpacking must not bleed between them."""
+        tlm = Telemetry(t_epoch=0,
+                        gnss_status=proto.pack_gnss_status(proto.GNSS_FIX_3D, 11))
+        assert tlm.gnss_fix == proto.GNSS_FIX_3D
+        assert tlm.gnss_sats == 11
+        assert tlm.has_fix
+
+    def test_sat_count_saturates_rather_than_corrupting_the_fix(self):
+        """Only 6 bits for satellites; a 70-sat count must not overflow into
+        neighbouring fields and silently rewrite the fix quality."""
+        tlm = Telemetry(t_epoch=0,
+                        gnss_status=proto.pack_gnss_status(proto.GNSS_FIX_2D, 70))
+        assert tlm.gnss_sats == 63
+        assert tlm.gnss_fix == proto.GNSS_FIX_2D
+        assert tlm.gnss_status <= 0xFF
+
+    def test_no_fix_is_not_a_fix(self):
+        assert not Telemetry(t_epoch=0, gnss_status=0).has_fix
 
     def test_tilt_magnitude_combines_both_axes(self):
         """Damage criteria are stated against total tilt, not per-axis."""
@@ -197,6 +246,7 @@ class TestCrossLanguage:
         assert int(c_output["sizeof_timesync"]) == TimeSync._S.size
         assert int(c_output["sizeof_neigh_hdr"]) == NeighborReport._S.size
         assert int(c_output["sizeof_neigh_entry"]) == NeighborReport._ENTRY.size
+        assert int(c_output["sizeof_pos"]) == Position._S.size
 
     def test_crc_implementations_agree(self, c_output):
         assert int(c_output["crc_check123456789"], 16) == crc16(b"123456789")
@@ -205,7 +255,8 @@ class TestCrossLanguage:
     def test_encoded_frame_is_byte_identical(self, c_output):
         """The real check: a node's transmitted bytes must equal what we build here."""
         tlm = Telemetry(t_epoch=1767225600, pitch_mdeg=-1234, roll_mdeg=5678,
-                        vib_rms_mg=412, vib_peak_hz=37, tof_mm=2450, crack_ohm=1500,
+                        vib_rms_mg=412, vib_peak_hz=37, temp_c_x100=2735, n_samples=32,
+                        gnss_status=proto.pack_gnss_status(proto.GNSS_FIX_3D, 9),
                         vbat_mv=3987, rssi=-87, snr=122,
                         flags=proto.TLM_RELAYED | proto.TLM_LOW_BATTERY)
         assert tlm.frame(src=0x42, seq=0x1337, hops=2).hex() == c_output["frame_telemetry"]
@@ -214,4 +265,5 @@ class TestCrossLanguage:
         """And the reverse direction: C-produced bytes must parse cleanly here."""
         header, decoded = decode(bytes.fromhex(c_output["frame_telemetry"]))
         assert header.src == 0x42 and header.hops == 2
-        assert decoded.tof_mm == 2450 and decoded.rssi == -87
+        assert decoded.temp_c_x100 == 2735 and decoded.rssi == -87
+        assert decoded.gnss_fix == proto.GNSS_FIX_3D and decoded.gnss_sats == 9

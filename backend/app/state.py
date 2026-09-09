@@ -21,9 +21,10 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import Settings
+from .deformation import NodeTilt, estimate_field
 from .models import alerts as alerts_t
 from .models import mesh_links, nodes as nodes_t, sites as sites_t, telemetry
-from .risk import Thresholds, assess
+from .risk import Thresholds, assess, corrected_tilt_mdeg
 
 SEVERITY_NAMES = {0: "medium", 1: "medium", 2: "high", 3: "critical"}
 
@@ -70,10 +71,20 @@ async def build_snapshot(session: AsyncSession, settings: Settings,
     )).mappings().all()
     latest = await latest_telemetry(session, [n["id"] for n in node_rows])
 
-    thresholds = Thresholds(settings.tilt_threshold_deg, settings.crack_threshold_mm,
-                            settings.vibration_threshold_mg)
+    thresholds = Thresholds(settings.tilt_threshold_deg, settings.strain_threshold_mm_per_m,
+                            settings.vibration_threshold_mg,
+                            settings.tilt_rate_threshold_deg_per_h)
     now = datetime.now(timezone.utc)
     stale_before = now - timedelta(seconds=settings.node_stale_seconds)
+
+    # Strain and subsidence are properties of the array, not of any one node, so
+    # they are reconstructed once here from the whole field and then handed to
+    # each node's assessment. See deformation.py for why this is possible at all
+    # with no crack gauge and no ranger.
+    from .ingest import _tilt_rates
+    rates = await _tilt_rates(session, [n["id"] for n in node_rows], now,
+                              settings.tilt_rate_window_hours)
+    field = _reconstruct(node_rows, latest, site, settings)
 
     out_nodes: list[dict[str, Any]] = []
     hops_by_addr: dict[int, int] = {}
@@ -86,14 +97,20 @@ async def build_snapshot(session: AsyncSession, settings: Settings,
             out_nodes.append(_offline_node(n))
             continue
 
+        est = field.get(n["addr"])
         a = assess(
             pitch_mdeg=row["pitch_mdeg"] or 0,
             roll_mdeg=row["roll_mdeg"] or 0,
             vib_rms_mg=row["vib_rms_mg"] or 0,
-            crack_ohm=row["crack_ohm"] or 0,
             thresholds=thresholds,
             baseline_pitch_mdeg=n["baseline_pitch_mdeg"] or 0,
             baseline_roll_mdeg=n["baseline_roll_mdeg"] or 0,
+            temp_c=(row["temp_c_x100"] or 0) / 100.0,
+            baseline_temp_c=(n["baseline_temp_c_x100"] or 0) / 100.0,
+            tilt_rate_deg_per_h=rates.get(n["id"], 0.0),
+            strain_mm_per_m=est.strain_mm_per_m if est else 0.0,
+            strain_valid=bool(est and est.strain_valid),
+            drift_mdeg_per_c=settings.tilt_drift_mdeg_per_c,
         )
         hops = row["hops"] or 0
         if online:
@@ -111,13 +128,17 @@ async def build_snapshot(session: AsyncSession, settings: Settings,
             "tiltPitchDeg": ((row["pitch_mdeg"] or 0) - (n["baseline_pitch_mdeg"] or 0)) / 1000,
             "tiltRollDeg": ((row["roll_mdeg"] or 0) - (n["baseline_roll_mdeg"] or 0)) / 1000,
             "tiltDeg": a.tilt_deg,
+            "tiltRateDegPerH": a.tilt_rate_deg_per_h,
             "vibrationMg": row["vib_rms_mg"] or 0,
-            "crackMm": a.crack_mm,
-            "subsidenceMm": 0.0,
+            "tempC": (row["temp_c_x100"] or 0) / 100.0,
+            "subsidenceMm": est.subsidence_mm if est else 0.0,
+            "subsidenceValid": bool(est and est.subsidence_valid),
             "strainMmPerM": a.strain_mm_per_m,
+            "strainValid": a.strain_valid,
             "riskScore": a.score,
             "risk": a.band,
             "damage": a.damage_class,
+            "gnssSats": ((row["gnss_status"] or 0) >> 2) & 0x3F,
             "hops": hops,
             "rssi": row["rssi"] or 0,
             "batteryPct": _battery_pct(row["vbat_mv"]),
@@ -152,8 +173,14 @@ async def build_snapshot(session: AsyncSession, settings: Settings,
             "highAlerts": sum(1 for a in alert_rows if a["severity"] == 2),
             "maxTiltDeg": max((n["tiltDeg"] for n in live), default=0.0),
             "tiltThresholdDeg": settings.tilt_threshold_deg,
-            "maxCrackMm": max((n["crackMm"] for n in live), default=0.0),
-            "crackThresholdMm": settings.crack_threshold_mm,
+            "maxStrainMmPerM": max((abs(n["strainMmPerM"]) for n in live
+                                    if n["strainValid"]), default=0.0),
+            "strainThresholdMmPerM": settings.strain_threshold_mm_per_m,
+            "maxSubsidenceMm": max((n["subsidenceMm"] for n in live), default=0.0),
+            "maxTiltRateDegPerH": max((abs(n["tiltRateDegPerH"]) for n in live),
+                                      default=0.0),
+            "tiltRateThresholdDegPerH": settings.tilt_rate_threshold_deg_per_h,
+            "strainResolved": any(n["strainValid"] for n in live),
             "packetDeliveryPct": (len(reachable) / len(live) * 100) if live else 0.0,
             "uptimePct": 99.1,
             "healthy": not any(n["risk"] == "critical" for n in live),
@@ -162,6 +189,35 @@ async def build_snapshot(session: AsyncSession, settings: Settings,
         "gatewayBatteryPct": 78,
         "storagePct": 85,
     }
+
+
+def _reconstruct(node_rows, latest, site, settings: Settings):
+    """Strain and subsidence for every placed node, from the tilt field.
+
+    Only nodes with a known position take part: the reconstruction divides by
+    the distance between nodes, so a node whose pin has never been dropped has
+    no baseline to differentiate along and is left out rather than guessed at.
+    """
+    drift = settings.tilt_drift_mdeg_per_c
+    tilts: list[NodeTilt] = []
+    for n in node_rows:
+        row = latest.get(n["id"])
+        if row is None or n["x_m"] is None or n["y_m"] is None:
+            continue
+        base_temp = (n["baseline_temp_c_x100"] or 0) / 100.0
+        temp = (row["temp_c_x100"] or 0) / 100.0
+        dp = corrected_tilt_mdeg(row["pitch_mdeg"] or 0, n["baseline_pitch_mdeg"] or 0,
+                                 temp, base_temp, drift) / 1000.0
+        dr = corrected_tilt_mdeg(row["roll_mdeg"] or 0, n["baseline_roll_mdeg"] or 0,
+                                 temp, base_temp, drift) / 1000.0
+        tilts.append(NodeTilt(
+            addr=n["addr"], x_m=float(n["x_m"]), y_m=float(n["y_m"]),
+            tilt_x_mm_per_m=math.tan(math.radians(dp)) * 1000.0,
+            tilt_y_mm_per_m=math.tan(math.radians(dr)) * 1000.0,
+        ))
+    return estimate_field(tilts, seam_depth_m=site["seam_depth_m"] or 150.0,
+                          panel_x_start=site["panel_x_start"],
+                          angle_of_draw_deg=site["angle_of_draw_deg"] or 35.0)
 
 
 async def _links(session: AsyncSession, site_id: int, hops_by_addr: dict[int, int],
@@ -247,7 +303,7 @@ def _alert_json(a: Any) -> dict[str, Any]:
         "ts": int(_utc(a["raised_at"]).timestamp() * 1000),
         "metrics": [
             {"label": "Tilt", "value": f"{a['tilt_deg'] or 0:.2f}°"},
-            {"label": "Crack", "value": f"{a['crack_mm'] or 0:.2f} mm"},
+            {"label": "Strain", "value": f"{a['strain_mm_per_m'] or 0:+.2f} mm/m"},
             {"label": "Vibration",
              "value": "High" if (a["vibration_mg"] or 0) > 60 else "Normal"},
         ],
@@ -261,7 +317,9 @@ def _offline_node(n: Any) -> dict[str, Any]:
         "lat": n["lat"], "lon": n["lon"], "x": n["x_m"], "y": n["y_m"],
         "isEdge": False, "zone": n["zone"] or "", "online": False,
         "tiltPitchDeg": 0.0, "tiltRollDeg": 0.0, "tiltDeg": 0.0, "vibrationMg": 0,
-        "crackMm": 0.0, "subsidenceMm": 0.0, "strainMmPerM": 0.0,
+        "tiltRateDegPerH": 0.0, "tempC": 0.0,
+        "subsidenceMm": 0.0, "subsidenceValid": False,
+        "strainMmPerM": 0.0, "strainValid": False, "gnssSats": 0,
         "riskScore": 0.0, "risk": "low", "damage": "negligible",
         "hops": 0, "rssi": 0, "batteryPct": 0,
     }
@@ -282,8 +340,12 @@ def _empty_snapshot(settings: Settings) -> dict[str, Any]:
         "kpis": {
             "totalNodes": 0, "activeNodes": 0, "inactiveNodes": 0, "totalAlerts": 0,
             "criticalAlerts": 0, "highAlerts": 0, "maxTiltDeg": 0.0,
-            "tiltThresholdDeg": settings.tilt_threshold_deg, "maxCrackMm": 0.0,
-            "crackThresholdMm": settings.crack_threshold_mm,
+            "tiltThresholdDeg": settings.tilt_threshold_deg,
+            "maxStrainMmPerM": 0.0,
+            "strainThresholdMmPerM": settings.strain_threshold_mm_per_m,
+            "maxSubsidenceMm": 0.0, "maxTiltRateDegPerH": 0.0,
+            "tiltRateThresholdDegPerH": settings.tilt_rate_threshold_deg_per_h,
+            "strainResolved": False,
             "packetDeliveryPct": 0.0, "uptimePct": 0.0, "healthy": True,
         },
         "gatewayVolts": 0.0, "gatewayBatteryPct": 0, "storagePct": 0,

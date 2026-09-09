@@ -5,12 +5,17 @@ through the mesh model (so hop counts, relaying and packet loss are real
 behaviour rather than decoration), and delivers them to the backend exactly as
 an ESP32 gateway would.
 
+Frames carry simulated time, not the wall clock. A compressed run posts hours of
+scenario in seconds, and stamping that with the real clock would collapse every
+derived rate -- tilt rate above all, which is the primary early-warning signal --
+into a division by nearly zero.
+
 This is what lets the whole software stack be built and demonstrated against the
 real wire format before any hardware exists -- and, once nodes are flashed, it
 keeps working as the offline demo path. The backend cannot tell the difference,
 which is the point: if the simulator can drive it, so can the field.
 
-    python -m simulator.virtual_gateway --api http://localhost:8000 --speed 60
+    python -m simulator.virtual_gateway --api http://localhost:8000 --interval 0.1
 
 Transports:
     http  POST /api/ingest with base64 frames (default; simplest for an ESP32)
@@ -31,7 +36,9 @@ from dataclasses import dataclass
 import numpy as np
 from subnet_proto import Neighbor, NeighborReport, Telemetry
 
-from .field import SITE_PRESETS, build_grid_field
+from .field import (
+    SITE_PRESETS, build_grid_field, build_transect_field, max_sensing_spacing_m,
+)
 from .mesh import MeshNetwork, Obstruction, RadioModel
 from .scenarios import SCENARIOS, FieldSimulator
 
@@ -63,11 +70,30 @@ class Stats:
 class VirtualGateway:
     def __init__(self, *, site: str, scenario: str, seed: int, api: str,
                  transport: str, mqtt_host: str | None, gateway_id: str,
-                 start_day: float, batch: int):
+                 start_day: float, batch: int, layout: str = "transect",
+                 n_nodes: int = 21):
         self.preset = SITE_PRESETS[site]
         radio = RadioModel()
-        self.nodes = build_grid_field(
-            self.preset, cols=5, rows=3, max_spacing_m=radio.max_reliable_spacing_m())
+        panel = self.preset.panel
+        # Two constraints, and the tighter one wins. Spacing the field for radio
+        # range alone would deliver every frame and still be unable to
+        # reconstruct strain from the tilt array.
+        required = max_sensing_spacing_m(panel.seam_depth_m, panel.angle_of_draw_deg)
+        spacing = min(radio.max_reliable_spacing_m(), required)
+        if layout == "transect":
+            # A survey line: the same node budget resolves the full profile
+            # along the direction of advance instead of sampling the whole
+            # panel too coarsely to differentiate.
+            self.nodes = build_transect_field(self.preset, n_nodes=n_nodes)
+        else:
+            self.nodes = build_grid_field(self.preset, cols=5, rows=3,
+                                          max_spacing_m=spacing)
+        actual = (max(n.x_m for n in self.nodes)
+                  - min(n.x_m for n in self.nodes)) / max(1, len(self.nodes) - 1)
+        log.info("field: %s, %d nodes at ~%.0f m spacing "
+                 "(radio allows %.0f m; strain needs <=%.0f m)",
+                 layout, len(self.nodes), actual if layout == "transect" else spacing,
+                 radio.max_reliable_spacing_m(), required)
         self.sim = FieldSimulator(
             self.preset, self.nodes, SCENARIOS[scenario](self.preset,
                                                          np.random.default_rng(seed)),
@@ -79,6 +105,12 @@ class VirtualGateway:
         self.mqtt_host = mqtt_host
         self.gateway_id = gateway_id
         self.day = start_day
+        # Frames carry *simulated* time, advancing one tick per tick, not the
+        # wall clock. A compressed run posts hours of scenario in seconds, and
+        # stamping it with the real clock would collapse every derived rate --
+        # including tilt rate, which is now the primary early-warning signal --
+        # into a division by almost zero.
+        self.epoch = int(time.time())
         self.batch = batch
         self.seq = 0
         self.stats = Stats()
@@ -109,7 +141,8 @@ class VirtualGateway:
                  "lat": n.lat, "lon": n.lon, "x_m": n.x_m, "y_m": n.y_m,
                  # Commissioned on undisturbed ground, before extraction began.
                  "baseline_pitch_mdeg": baselines[n.addr][0],
-                 "baseline_roll_mdeg": baselines[n.addr][1]}
+                 "baseline_roll_mdeg": baselines[n.addr][1],
+                 "baseline_temp_c_x100": baselines[n.addr][2]}
                 for n in self.nodes
             ],
         }
@@ -123,7 +156,7 @@ class VirtualGateway:
         return float(min(max(self.sim.scenario.face_x(self.day), panel.x_start),
                          panel.x_end))
 
-    def _commissioning_baselines(self) -> dict[int, tuple[int, int]]:
+    def _commissioning_baselines(self) -> dict[int, tuple[int, int, int]]:
         """Each node's attitude at day zero, before any extraction.
 
         This is the survey a crew records when the field is installed. Without
@@ -132,13 +165,16 @@ class VirtualGateway:
         system is meant to detect.
         """
         undisturbed = self.sim.sample_at(0.0, int(time.time()))
-        return {ns.node.addr: (ns.telemetry.pitch_mdeg, ns.telemetry.roll_mdeg)
+        # The temperature the survey was taken at is part of the baseline: tilt
+        # drift can only be removed relative to a known reference temperature.
+        return {ns.node.addr: (ns.telemetry.pitch_mdeg, ns.telemetry.roll_mdeg,
+                               ns.telemetry.temp_c_x100)
                 for ns in undisturbed.nodes}
 
     # --------------------------------------------------------------- frames
     def _frames_for_tick(self) -> list[bytes]:
         """Sample the field, then push each frame through the mesh to the gateway."""
-        epoch = int(time.time())
+        epoch = self.epoch
         sample = self.sim.sample_at(self.day, epoch)
         frames: list[bytes] = []
 
@@ -159,6 +195,16 @@ class VirtualGateway:
             tlm.snr = max(0, min(255, int((delivery.snr_at_gateway + 20) * 4)))
             frames.append(tlm.frame(src=ns.node.addr, seq=self.seq,
                                     hops=delivery.hops))
+
+        # GNSS reports are rarer still. Position is static until something
+        # drags a node, so sending it every cycle would spend airtime
+        # retransmitting a constant.
+        if self.rng.random() < 0.05:
+            node = self.rng.choice(self.nodes)
+            self.seq = (self.seq + 1) & 0xFFFF
+            frames.append(self.sim.sensors[node.addr]
+                          .position(epoch)
+                          .frame(src=node.addr, seq=self.seq))
 
         # Neighbour reports keep the topology graph alive; they are far less
         # frequent than telemetry because the topology changes slowly.
@@ -223,6 +269,7 @@ class VirtualGateway:
                 frames = self._frames_for_tick()
                 await self._post(session, frames)
                 self.day += TICK_MINUTES / 1440
+                self.epoch += TICK_MINUTES * 60
                 count += 1
                 if count % 24 == 0:      # roughly every six simulated hours
                     await self._report_face(session)
@@ -273,6 +320,12 @@ def main(argv: list[str] | None = None) -> int:
                         help="real seconds between ticks (one tick = 15 simulated minutes)")
     parser.add_argument("--ticks", type=int, default=None, help="stop after N ticks")
     parser.add_argument("--batch", type=int, default=64, help="max frames per POST")
+    parser.add_argument("--layout", default="transect", choices=["transect", "grid"],
+                        help="transect: one dense survey line (resolves strain on a "
+                             "21-node budget). grid: whole-panel coverage, which "
+                             "needs ~5x the nodes to resolve strain")
+    parser.add_argument("--nodes", type=int, default=21,
+                        help="node count for the transect layout")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 

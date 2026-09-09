@@ -25,6 +25,7 @@ int main(void)
     printf("sizeof_timesync=%zu\n", sizeof(timesync_t));
     printf("sizeof_neigh_hdr=%zu\n", sizeof(neigh_hdr_t));
     printf("sizeof_neigh_entry=%zu\n", sizeof(neigh_entry_t));
+    printf("sizeof_pos=%zu\n", sizeof(pos_t));
 
     /* CRC reference vectors */
     printf("crc_check123456789=%04x\n", mesh_crc16((const uint8_t *)"123456789", 9));
@@ -37,8 +38,9 @@ int main(void)
         .roll_mdeg   = 5678,
         .vib_rms_mg  = 412,
         .vib_peak_hz = 37,
-        .tof_mm      = 2450,
-        .crack_ohm   = 1500,
+        .temp_c_x100 = 2735,          /* 27.35 degC on the LIS3DH die      */
+        .n_samples   = 32,
+        .gnss_status = GNSS_STATUS(GNSS_FIX_3D, 9),
         .vbat_mv     = 3987,
         .rssi        = -87,
         .snr         = 122,

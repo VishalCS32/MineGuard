@@ -32,7 +32,7 @@ CREATE TABLE nodes (
     label              TEXT NOT NULL,
     geom               GEOMETRY(Point, 4326),   -- surface position
     elevation_m        REAL,
-    hw_revision        TEXT DEFAULT 'esp32s3-lis3dh-e220-v1',
+    hw_revision        TEXT DEFAULT 'esp32s3-lis3dh-neo6m-e220-v2',
     installed_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_seen          TIMESTAMPTZ,
     active_cfg_version INT NOT NULL DEFAULT 0,
@@ -40,7 +40,9 @@ CREATE TABLE nodes (
     -- which is why a re-levelled node must be re-baselined, not just re-zeroed.
     baseline_pitch_mdeg INT,
     baseline_roll_mdeg  INT,
-    baseline_tof_mm     INT,
+    baseline_temp_c_x100 INT,
+    position_source     TEXT DEFAULT 'survey',
+    position_acc_m      REAL,
     is_active          BOOLEAN NOT NULL DEFAULT TRUE,
     UNIQUE (site_id, addr)
 );
@@ -56,8 +58,9 @@ CREATE TABLE telemetry (
     tilt_mdeg    REAL,          -- derived magnitude, denormalised for fast queries
     vib_rms_mg   INT,
     vib_peak_hz  INT,
-    tof_mm       INT,
-    crack_ohm    INT,
+    temp_c_x100  INT,           -- LIS3DH die temp, for drift correction
+    n_samples    INT,           -- raw samples averaged into this frame
+    gnss_status  INT,
     vbat_mv      INT,
     rssi         SMALLINT,
     snr_db       REAL,
@@ -83,8 +86,7 @@ SELECT node_id,
        max(tilt_mdeg)  AS tilt_mdeg_max,
        avg(vib_rms_mg) AS vib_rms_mg_avg,
        max(vib_rms_mg) AS vib_rms_mg_max,
-       avg(tof_mm)     AS tof_mm_avg,
-       avg(crack_ohm)  AS crack_ohm_avg,
+       avg(temp_c_x100) AS temp_c_x100_avg,
        min(vbat_mv)    AS vbat_mv_min,
        count(*)        AS samples
 FROM telemetry
@@ -149,7 +151,7 @@ CREATE TABLE node_configs (
     tx_power_dbm       INT  NOT NULL DEFAULT 22,
     tilt_alert_mdeg    INT  NOT NULL DEFAULT 2000,
     vib_alert_mg       INT  NOT NULL DEFAULT 500,
-    crack_alert_ohm    INT  NOT NULL DEFAULT 100,
+    tilt_rate_alert_mdeg_h INT NOT NULL DEFAULT 150,
     tilt_offset_pitch  INT  NOT NULL DEFAULT 0,
     tilt_offset_roll   INT  NOT NULL DEFAULT 0,
     flags              INT  NOT NULL DEFAULT 15,

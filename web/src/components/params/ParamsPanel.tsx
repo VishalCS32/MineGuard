@@ -1,4 +1,4 @@
-import { CRACK_THRESHOLD_MM, TILT_THRESHOLD_DEG } from '@/sim/feed';
+import { STRAIN_THRESHOLD_MM_PER_M, TILT_THRESHOLD_DEG } from '@/sim/feed';
 import { Gauge } from './Gauge';
 import type { NodeReading } from '@/data/types';
 
@@ -21,8 +21,11 @@ export function ParamsPanel({ node }: { node: NodeReading | undefined }) {
         note="Limit: 400"
       />
       <Gauge
-        label="Crack Width" value={node.crackMm} limit={CRACK_THRESHOLD_MM} unit="mm"
-        note={`Limit: ${CRACK_THRESHOLD_MM.toFixed(2)}`}
+        label="Ground Strain" value={Math.abs(node.strainMmPerM)}
+        limit={STRAIN_THRESHOLD_MM_PER_M} unit="mm/m"
+        note={node.strainValid
+          ? `Limit: ${STRAIN_THRESHOLD_MM_PER_M.toFixed(2)}`
+          : 'Array too sparse to resolve'}
       />
     </div>
   );

@@ -290,8 +290,7 @@ class FieldSimulator:
         self.gateway_xy = gateway_xy if gateway_xy is not None else (
             preset.panel.x_start - 0.5 * preset.panel.radius_of_influence_m, 0.0)
         self.sensors = {
-            n.addr: NodeSensorModel(addr=n.addr,
-                                    ref_post_distance_mm=n.ref_post_distance_mm,
+            n.addr: NodeSensorModel(addr=n.addr, lat=n.lat, lon=n.lon,
                                     rng=np.random.default_rng(seed + n.addr))
             for n in nodes
         }
@@ -331,7 +330,7 @@ class FieldSimulator:
             rssi, snr = self._link_quality(node)
             tlm = self.sensors[node.addr].read(
                 t_epoch=t_epoch, tilt_x_mm_per_m=tx, tilt_y_mm_per_m=ty,
-                strain_mm_per_m=st, subsidence_rate_mm_per_hr=rate, env=env,
+                subsidence_rate_mm_per_hr=rate, env=env,
                 rssi=rssi, snr_db=snr,
                 extra_vibration_mg=pert.extra_vib_mg,
                 vibration_peak_hz=pert.vib_peak_hz)

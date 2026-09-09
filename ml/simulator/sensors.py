@@ -1,18 +1,27 @@
 """Turn ground movement into what the hardware actually reports.
 
 The physics module says how the ground moves. This module says what an ESP32-S3
-with a LIS3DH, a VL53L1X and a crack gauge would *measure* -- which is a different
-and much messier thing: every reading carries installation offsets, thermal drift,
-quantisation and noise. Training a model on clean physics and deploying it against
-noisy hardware is the classic way to build a system that demos well and fails in
-the field, so the corruption here is deliberate and calibrated to real datasheets.
+with a LIS3DH, a vibration sensor and a NEO-6M would *measure* -- which is a
+different and much messier thing: every reading carries installation offsets,
+thermal drift, quantisation and noise. Training a model on clean physics and
+deploying it against noisy hardware is the classic way to build a system that
+demos well and fails in the field, so the corruption here is deliberate and
+calibrated to real datasheets.
+
+The node measures tilt, vibration and position. It does *not* measure strain or
+displacement -- there is no crack gauge and no ranger. Those are reconstructed
+from the tilt field across the array (``strain = B * dT/dx``), which is why the
+noise figures below matter so much: the server differentiates this signal, and
+differentiation amplifies noise.
 
 Datasheet-derived noise figures
 -------------------------------
 LIS3DH   +/-2 g, 12-bit -> ~1 mg/LSB -> ~0.06 deg tilt resolution. With on-node
          averaging over a sample window we take ~0.05 deg (50 mdeg) 1-sigma.
-VL53L1X  ~+/-5 mm ranging error at 2.5 m; averaging brings 1-sigma to ~3 mm.
-Crack    resistive gauge, nominal 1 kOhm, ~1% reading noise.
+LIS3DH   die temperature: coarse, ~0.5 degC 1-sigma after averaging. Good enough,
+temp     because it only has to track the *change* that drives post expansion.
+NEO-6M   ~2.5 m CEP horizontal. Three orders of magnitude away from a subsidence
+         signal, and the model must never let it look otherwise.
 """
 
 from __future__ import annotations
@@ -23,13 +32,20 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from subnet_proto import (
-    TLM_CRACK_FAULT,
+    GNSS_FIX_2D,
+    GNSS_FIX_3D,
+    GNSS_NO_FIX,
+    TLM_GNSS_FAULT,
     TLM_LOW_BATTERY,
     TLM_TILT_FAULT,
-    TLM_TOF_FAULT,
     TLM_UNCALIBRATED,
+    TLM_VIB_FAULT,
+    Position,
     Telemetry,
+    pack_gnss_status,
 )
+
+from .field import local_to_wgs84
 
 __all__ = ["NoiseProfile", "Environment", "NodeSensorModel"]
 
@@ -41,18 +57,16 @@ class NoiseProfile:
     tilt_noise_mdeg: float = 50.0            # LIS3DH, averaged
     tilt_drift_mdeg_per_degc: float = 18.0   # thermal expansion of the mounting post
     tilt_random_walk_mdeg: float = 2.0       # slow bias wander per sample
-    tof_noise_mm: float = 3.0                # VL53L1X, averaged
-    tof_drift_mm_per_degc: float = 0.35
-    crack_noise_fraction: float = 0.01
     vib_ambient_mg: float = 12.0             # wind, distant plant, background
     vib_ambient_sigma_mg: float = 4.0
     vbat_noise_mv: float = 8.0
-
-    # Crack gauge response: resistance climbs once ground goes into tension.
-    crack_nominal_ohm: float = 1000.0
-    crack_strain_threshold_mm_per_m: float = 1.5
-    crack_gain: float = 900.0
-    crack_exponent: float = 1.6
+    #: LIS3DH die temperature, after on-node averaging. It does not need to be
+    #: accurate in absolute terms -- only to track the change that drives the
+    #: mounting post's thermal expansion, which is what the server subtracts.
+    temp_noise_c: float = 0.5
+    #: NEO-6M horizontal CEP. Deliberately large: it is what makes GNSS useless
+    #: for subsidence and useful for detecting a node that has physically moved.
+    gnss_sigma_m: float = 2.5
 
 
 @dataclass(slots=True)
@@ -87,8 +101,10 @@ class NodeSensorModel:
     """
 
     addr: int
-    ref_post_distance_mm: int = 2500
     reference_temp_c: float = 28.0
+    #: True position, from the commissioning survey. GNSS reports this + noise.
+    lat: float = 0.0
+    lon: float = 0.0
     noise: NoiseProfile = field(default_factory=NoiseProfile)
     rng: np.random.Generator = field(default_factory=np.random.default_rng)
 
@@ -100,10 +116,9 @@ class NodeSensorModel:
     bias_roll_mdeg: float = 0.0
     soc: float = 0.95                # battery state of charge, 0..1
     tilt_fault: bool = False
-    tof_fault: bool = False
-    crack_fault: bool = False
+    vib_fault: bool = False
+    gnss_fault: bool = False
     calibrated: bool = True
-    crack_fractured: bool = False    # once the gauge parts, it stays parted
 
     def __post_init__(self) -> None:
         # Nodes are hand-planted on uneven ground: a degree or so of install tilt
@@ -114,9 +129,9 @@ class NodeSensorModel:
 
     # ------------------------------------------------------------------ read
     def read(self, *, t_epoch: int, tilt_x_mm_per_m: float, tilt_y_mm_per_m: float,
-             strain_mm_per_m: float, subsidence_rate_mm_per_hr: float,
+             subsidence_rate_mm_per_hr: float,
              env: Environment, rssi: int = -80, snr_db: float = 8.0,
-             extra_vibration_mg: float = 0.0,
+             extra_vibration_mg: float = 0.0, n_samples: int = 32,
              vibration_peak_hz: int | None = None) -> Telemetry:
         """Produce one telemetry frame for this node at this instant."""
         d_temp = env.temperature_c - self.reference_temp_c
@@ -139,16 +154,12 @@ class NodeSensorModel:
         if self.tilt_fault:      # stuck axis -- reports its last install offset
             pitch, roll = float(self.install_pitch_mdeg), float(self.install_roll_mdeg)
 
-        # --- displacement (VL53L1X to the reference post) --------------------
-        # Strain is a fractional length change, so the ranger sees baseline*strain.
-        tof = (self.ref_post_distance_mm * (1.0 + strain_mm_per_m / 1000.0)
-               + d_temp * self.noise.tof_drift_mm_per_degc
-               + self.rng.normal(0, self.noise.tof_noise_mm))
-        if self.tof_fault:
-            tof = 0.0            # VL53L1X reports 0 on a failed ranging attempt
-
-        # --- crack gauge -----------------------------------------------------
-        crack_ohm_raw = self._crack_resistance(strain_mm_per_m)
+        # --- die temperature (LIS3DH) ----------------------------------------
+        # Reported so the server can undo the drift term added to tilt above.
+        # It is the same temperature that caused the drift, which is the whole
+        # point: an ambient reading from elsewhere on site would not correlate
+        # with this post's expansion and would correct nothing.
+        temp_measured = env.temperature_c + self.rng.normal(0, self.noise.temp_noise_c)
 
         # --- vibration (LIS3DH high-rate FIFO) -------------------------------
         # Active subsidence generates continuous micro-seismic noise; the louder
@@ -163,6 +174,8 @@ class NodeSensorModel:
             # Ground settlement concentrates energy low; ambient sits higher.
             vibration_peak_hz = int(self.rng.uniform(6, 14) if settlement_mg > 5
                                     else self.rng.uniform(18, 55))
+        if self.vib_fault:
+            vib, vibration_peak_hz = 0.0, 0
 
         # --- battery ---------------------------------------------------------
         vbat = self._battery(env)
@@ -170,10 +183,10 @@ class NodeSensorModel:
         flags = 0
         if self.tilt_fault:
             flags |= TLM_TILT_FAULT
-        if self.tof_fault:
-            flags |= TLM_TOF_FAULT
-        if self.crack_fault:
-            flags |= TLM_CRACK_FAULT
+        if self.vib_fault:
+            flags |= TLM_VIB_FAULT
+        if self.gnss_fault:
+            flags |= TLM_GNSS_FAULT
         if not self.calibrated:
             flags |= TLM_UNCALIBRATED
         if vbat < 3500:
@@ -185,8 +198,9 @@ class NodeSensorModel:
             roll_mdeg=_clamp_i16(roll),
             vib_rms_mg=_clamp_u16(vib),
             vib_peak_hz=_clamp_u16(vibration_peak_hz),
-            tof_mm=_clamp_u16(tof),
-            crack_ohm=crack_ohm_raw,
+            temp_c_x100=_clamp_i16(temp_measured * 100.0),
+            n_samples=_clamp_u8(n_samples),
+            gnss_status=self._gnss_status(),
             vbat_mv=_clamp_u16(vbat),
             rssi=int(max(-128, min(127, rssi))),
             snr=_clamp_u8((snr_db + 20.0) * 4.0),
@@ -194,28 +208,34 @@ class NodeSensorModel:
         )
 
     # -------------------------------------------------------------- internals
-    def _crack_resistance(self, strain_mm_per_m: float) -> int:
-        """Gauge resistance in units of 10 ohm (the wire format's scaling).
+    def _gnss_status(self) -> int:
+        """Fix quality and satellite count, as the NEO-6M would report them."""
+        if self.gnss_fault:
+            return pack_gnss_status(GNSS_NO_FIX, 0)
+        sats = int(np.clip(self.rng.normal(9, 2), 0, 20))
+        fix = GNSS_FIX_3D if sats >= 4 else (GNSS_FIX_2D if sats == 3 else GNSS_NO_FIX)
+        return pack_gnss_status(fix, sats)
 
-        A bonded resistive gauge is flat until the ground goes into tension past
-        its threshold, then climbs steeply as micro-cracks propagate through the
-        conductive film, and finally goes open-circuit when the crack parts it.
-        Compression does not open a crack, so negative strain reads nominal.
+    def position(self, t_epoch: int, *, disp_east_m: float = 0.0,
+                 disp_north_m: float = 0.0) -> Position:
+        """One GNSS report.
+
+        ``disp_*`` is the node's *true* horizontal movement in metres. Ordinary
+        subsidence produces millimetres of it, so it vanishes under the 2.5 m
+        noise -- correctly, because a NEO-6M genuinely cannot see subsidence. A
+        collapse or a theft moves the node metres, and that does show up.
         """
-        if self.crack_fault:
-            return 0
-        n = self.noise
-        if self.crack_fractured:
-            return 65535
-        excess = strain_mm_per_m - n.crack_strain_threshold_mm_per_m
-        ohms = n.crack_nominal_ohm
-        if excess > 0:
-            ohms += n.crack_gain * (excess ** n.crack_exponent)
-            if excess > 8.0:               # the gauge physically tears
-                self.crack_fractured = True
-                return 65535
-        ohms *= 1.0 + self.rng.normal(0, n.crack_noise_fraction)
-        return _clamp_u16(ohms / 10.0)
+        east = disp_east_m + self.rng.normal(0, self.noise.gnss_sigma_m)
+        north = disp_north_m + self.rng.normal(0, self.noise.gnss_sigma_m)
+        lat, lon = local_to_wgs84(self.lat, self.lon, east, north)
+        return Position(
+            t_epoch=int(t_epoch),
+            lat_e7=int(round(lat * 1e7)),
+            lon_e7=int(round(lon * 1e7)),
+            alt_m=0,
+            h_acc_cm=_clamp_u16(self.noise.gnss_sigma_m * 100.0),
+            gnss_status=self._gnss_status(),
+        )
 
     def _battery(self, env: Environment) -> float:
         """18650 + small solar panel. Charges by day, drains slowly at night."""
@@ -231,10 +251,10 @@ class NodeSensorModel:
         match kind:
             case "tilt":
                 self.tilt_fault = True
-            case "tof":
-                self.tof_fault = True
-            case "crack":
-                self.crack_fault = True
+            case "vib":
+                self.vib_fault = True
+            case "gnss":
+                self.gnss_fault = True
             case "uncalibrated":
                 self.calibrated = False
             case _:
