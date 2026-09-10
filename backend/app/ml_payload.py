@@ -11,10 +11,10 @@ from .models import telemetry, nodes
 def telemetry_to_ml_node(telemetry) -> dict:
     """Convert backend telemetry into the ML node format."""
 
-    def get(name):
+    def get(name, default=None):
         if isinstance(telemetry, dict):
-            return telemetry.get(name)
-        return getattr(telemetry, name)
+            return telemetry.get(name, default)
+        return getattr(telemetry, name, default)
 
     return {
         "node_id": str(get("node_id")),
@@ -33,23 +33,24 @@ def telemetry_to_ml_node(telemetry) -> dict:
         },
 
         "orientation": {
-            "pitch": (get("pitch_mdeg") or 0) / 1000.0,
-            "roll": (get("roll_mdeg") or 0) / 1000.0,
+            "pitch": (get("pitch_mdeg", 0) or 0) / 1000.0,
+            "roll": (get("roll_mdeg", 0) or 0) / 1000.0,
         },
 
         "vibration": {
-            "rms_mg": get("vib_rms_mg") or 0,
-            "peak_hz": get("vib_peak_hz") or 0,
+            "rms_mg": get("vib_rms_mg", 0) or 0,
+            "peak_hz": get("vib_peak_hz", 0) or 0,
         },
 
         "gps": {
-            "latitude": None,
-            "longitude": None,
-            "status": get("gnss_status") or 0,
+            "latitude": get("lat"),
+            "longitude": get("lon"),
+            "status": get("gnss_status", 0) or 0,
         },
 
         "ml": {},
     }
+
 
 def build_derived(
     field: dict,
@@ -86,7 +87,11 @@ def build_ml_payload(
             node_addr = node.get("node_addr", node.get("node_id"))
         else:
             node_label = getattr(node, "node_label", None)
-            node_addr = getattr(node, "node_addr", getattr(node, "node_id", None))
+            node_addr = getattr(
+                node,
+                "node_addr",
+                getattr(node, "node_id", None),
+            )
 
         if node_label:
             ml_node["node_id"] = str(node_label)
