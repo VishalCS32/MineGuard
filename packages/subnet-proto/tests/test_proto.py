@@ -267,3 +267,70 @@ class TestCrossLanguage:
         assert header.src == 0x42 and header.hops == 2
         assert decoded.temp_c_x100 == 2735 and decoded.rssi == -87
         assert decoded.gnss_fix == proto.GNSS_FIX_3D and decoded.gnss_sats == 9
+
+
+# ------------------------------------------------ firmware encoder identity
+@pytest.mark.skipif(shutil.which("cc") is None, reason="no C compiler available")
+class TestFirmwareEncoder:
+    """Compiles the firmware's own frame builder and diffs its output.
+
+    ``TestCrossLanguage`` proves the structs agree. This proves the function the
+    node transmits with agrees -- it assembles the header itself and computes the
+    CRC over two discontiguous spans, so it is genuinely separate code from a
+    memcpy of a packed struct, and it is the code that ships.
+    """
+
+    FIRMWARE = REPO / "firmware"
+
+    @staticmethod
+    @pytest.fixture(scope="class")
+    def fw(tmp_path_factory) -> dict[str, str]:
+        binary = tmp_path_factory.mktemp("fw") / "firmware_check"
+        subprocess.run(
+            ["cc", "-std=c11", "-Wall", "-Werror",
+             f"-I{TestFirmwareEncoder.FIRMWARE / 'common'}",
+             f"-I{TestFirmwareEncoder.FIRMWARE / 'components/subnet_proto/include'}",
+             str(Path(__file__).parent / "firmware_check.c"),
+             str(TestFirmwareEncoder.FIRMWARE / "components/subnet_proto/subnet_proto.c"),
+             "-o", str(binary)],
+            check=True, capture_output=True)
+        out = subprocess.run([str(binary)], check=True, capture_output=True, text=True).stdout
+        return dict(line.split("=", 1) for line in out.strip().splitlines())
+
+    def test_telemetry_frame_matches(self, fw):
+        tlm = Telemetry(t_epoch=1767225600, pitch_mdeg=-1234, roll_mdeg=5678,
+                        vib_rms_mg=412, vib_peak_hz=37, temp_c_x100=2735, n_samples=32,
+                        gnss_status=proto.pack_gnss_status(proto.GNSS_FIX_3D, 9),
+                        vbat_mv=3987, rssi=-87, snr=122,
+                        flags=proto.TLM_RELAYED | proto.TLM_LOW_BATTERY)
+        assert tlm.frame(src=0x42, seq=0x1337, hops=2).hex() == fw["telemetry"]
+
+    def test_event_frame_matches(self, fw):
+        evt = Event(t_epoch=1767225600, event_code=EventCode.TILT_ACCEL,
+                    severity=3, value=-4200, threshold=2000)
+        assert evt.frame(src=0x07, seq=9).hex() == fw["event"]
+
+    def test_position_frame_matches(self, fw):
+        pos = Position(t_epoch=1767225600, lat_e7=236780000, lon_e7=863950000,
+                       alt_m=214, h_acc_cm=250,
+                       gnss_status=proto.pack_gnss_status(proto.GNSS_FIX_3D, 11))
+        assert pos.frame(src=0x21, seq=5).hex() == fw["position"]
+
+    def test_config_frame_and_hash_match(self, fw):
+        """The hash is what the ACK echoes, so a mismatch here would make every
+        downlink look rejected while the node believed it had applied it."""
+        cfg = Config(cfg_version=1, sample_interval_s=60, wor_period_ms=2000,
+                     tx_power_dbm=22, tilt_alert_mdeg=2000, vib_alert_mg=500,
+                     tilt_rate_alert_mdeg_h=150, tilt_offset_pitch=0,
+                     tilt_offset_roll=0, flags=0x0F)
+        assert f"{cfg.compute_hash():04x}" == fw["cfg_hash"]
+        assert cfg.frame(src=ADDR_GATEWAY, dst=0x10, seq=3).hex() == fw["config"]
+
+    def test_config_ack_frame_matches(self, fw):
+        cfg = Config(cfg_version=1, sample_interval_s=60, wor_period_ms=2000,
+                     tx_power_dbm=22, tilt_alert_mdeg=2000, vib_alert_mg=500,
+                     tilt_rate_alert_mdeg_h=150, tilt_offset_pitch=0,
+                     tilt_offset_roll=0, flags=0x0F)
+        ack = ConfigAck(t_epoch=1767225600, cfg_version=1,
+                        cfg_hash=cfg.compute_hash(), status=0)
+        assert ack.frame(src=0x10, seq=4, hops=1).hex() == fw["config_ack"]

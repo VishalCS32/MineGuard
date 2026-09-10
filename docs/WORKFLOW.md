@@ -12,7 +12,7 @@ flowchart LR
   subgraph FIELD["FIELD — battery powered, no infrastructure"]
     N["NODE ×21<br/>ESP32-S3 mini + LIS3DH + vib sensor + NEO-6M<br/>sample → features → 22 B frame"]
     M["LoRa 865 MHz MESH<br/>flood + TTL + de-dup<br/>multi-hop relay"]
-    G["GATEWAY<br/>ESP32 + E220 + SIM800L + SD<br/>de-dup · batch · store-and-forward"]
+    G["GATEWAY<br/>ESP32-S3 + E220 + SIM800L + SD<br/>de-dup · batch · store-and-forward<br/>on-site web UI on its own AP"]
   end
   subgraph SERVER["SERVER — laptop, VPS or on-site box"]
     I["INGEST<br/>decode · baseline · upsert"]
@@ -81,7 +81,7 @@ wake  →  sample burst  →  extract features  →  local threshold check  → 
 
 | Sensor | Measures | Reported as |
 |---|---|---|
-| LIS3DH accelerometer | Static tilt from the gravity vector, plus vibration from its high-rate FIFO | `pitch_mdeg`, `roll_mdeg` (int16), `vib_rms_mg`, `vib_peak_hz` (on-node FFT) |
+| LIS3DH accelerometer | Static tilt from the gravity vector, plus vibration energy over the sample burst | `pitch_mdeg`, `roll_mdeg` (int16), `vib_rms_mg`. `vib_peak_hz` needs a uniformly sampled FIFO burst and an FFT; the shipping firmware reports 0 rather than a number it did not measure — see the note in `firmware/node/main/main.c` |
 | LIS3DH die temperature | Thermal expansion of the mounting post — **a correction channel, not weather** | `temp_c_x100` (int16, centi-°C) |
 | Vibration sensor | Wired to an EXT1 wake pin: a blast or impact wakes the node out of deep sleep at zero standing current, instead of waiting for its slot | drives the `EVENT` fast path |
 | NEO-6M GNSS | Position, UTC, satellite count. **Not subsidence** — metre-scale against a millimetre signal | `gnss_status` (fix + sats); full fix in a separate `POSITION` frame |
@@ -159,9 +159,10 @@ deliberate, so the packet-delivery statistic on the dashboard stays honest.
 
 ## Stage 3 — Gateway: the boundary between field and network
 
-The gateway (ESP32 + E220 + SIM800L + SD card) is the only node with a mains or
-solar-plus-large-battery budget, and it is where the system stops being a radio
-network and becomes a data pipeline.
+The gateway is the **same ESP32-S3 board as a node** — different modules on the
+same headers, different value in NVS — with the E220, a SIM800L and a microSD
+card. It is the only node with a mains or solar-plus-large-battery budget, and it
+is where the system stops being a radio network and becomes a data pipeline.
 
 Responsibilities, in order:
 
@@ -175,8 +176,19 @@ Responsibilities, in order:
 5. **Run a local rule engine** — the gateway independently evaluates severity so
    that **an SMS can be sent with no internet at all**. This is the path that
    matters at 3 a.m. on a site whose backhaul is down.
-6. **Relay downlinks** — `CONFIG_SET` and `TIME_SYNC` toward sleeping nodes,
-   using wake-on-radio (`wor_period_ms`, default 2000 ms).
+6. **Relay downlinks** — `CONFIG_SET` and `TIME_SYNC` toward sleeping nodes. A
+   held downlink goes out the instant that node is next heard from: a frame just
+   received is proof the sender is awake, which no wake-on-radio scheme can
+   better.
+7. **Serve its own web UI** — one page from flash, over the site network and
+   over the gateway's own access point. It answers "is this box working" for
+   somebody standing next to it, including when the site network is the thing
+   that is broken: scan for networks and join one without a reboot, watch every
+   node it has heard, send a test SMS (`firmware/gateway/main/webui.c`).
+8. **Optionally push a decoded realtime feed** — a JSON document of the gateway
+   and every node, POSTed to any endpoint the operator configures, every ten
+   seconds. Separate from the ingest path and allowed to fail, so a third-party
+   dashboard can never delay a warning (`report.c`, `uplink_push_json`).
 
 Two transports, both first-class:
 
@@ -184,6 +196,7 @@ Two transports, both first-class:
 |---|---|---|
 | HTTP | `POST /api/ingest` with `{frames: [base64...], gateway, site}` | Default. Simplest for a constrained ESP32 with a TLS-free WiFi stack |
 | MQTT | publish `subnet/gw/<id>/up`, subscribe `subnet/gw/<id>/cmd` | Deployed shape. Broker is Mosquitto (`docker-compose.yml`) |
+| Realtime push | `POST <any URL>` with a decoded JSON document, every 10 s | Optional third-party feed. Never carries the system of record, and is allowed to fail |
 
 MQTT is **optional by design** (`backend/app/mqtt.py`): losing the broker
 degrades the transport, never the system — the gateway falls back to HTTP.
@@ -526,16 +539,18 @@ reports that disturbance as ground movement forever.
 | Ingest, risk scoring, alerting, downlink, snapshot, WebSocket | ✅ Built | `backend/app` (63 tests) |
 | Web dashboard — Leaflet 2-D, Three.js 3-D, live feed | ✅ Built | `web/src` |
 | Deployed stack — TimescaleDB/PostGIS, Mosquitto, Redis | ✅ Built | `docker-compose.yml` |
-| **Node firmware** | ⬜ Empty | `firmware/node/src` — protocol header and frame layout already fixed |
-| **Gateway firmware + local rule engine + SIM800L driver** | ⬜ Empty | `firmware/gateway/src` |
+| **Node firmware** — duty cycle, on-node thresholds, mesh relay, deep sleep | ✅ Built | `firmware/node`, portable core tested in `firmware/host_test` (325 checks) |
+| **Gateway firmware + local rule engine + SIM800L driver** | ✅ Built | `firmware/gateway`, `firmware/components/{gwrules,sim800l}` |
+| **Hardware build sheet and complete pin map** | ✅ Built | `docs/HARDWARE.md`, generated from `firmware/common/board_pins.h` |
 | **ML training pipeline** | ⬜ Empty | `ml/training` — labelled data generator is ready |
 | **ML inference service** | ⬜ Empty | `ml/service` — port and `ML_SERVICE_URL` already wired |
 | **SMS dispatcher** | ⬜ Empty | `alerts.notified_sms` column exists; no sender yet |
 | **Android app** | ⬜ Empty | `android/` — consumes the same `/api/snapshot` document |
 
-The order these should be filled in: ML service (the "AI-enabled" claim), then
-the SMS dispatcher (the alerting claim), then the app, then firmware. Everything
-above them already speaks the contracts they need to implement.
+The order the rest should be filled in: ML service (the "AI-enabled" claim),
+then the SMS dispatcher for the server-directed path (the gateway's own local
+path already works without it), then the app. Everything above them already
+speaks the contracts they need to implement.
 
 ---
 

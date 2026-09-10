@@ -1,0 +1,43 @@
+# Gateway defaults.
+
+CONFIG_IDF_TARGET="esp32s3"
+
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+
+# The gateway is the same board as a node, so it is provisioned over the same
+# native USB console.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# 1 ms ticks, for the same reason as the node: the radio driver waits on BUSY a
+# tick at a time and the gateway does that on every frame it relays.
+CONFIG_FREERTOS_HZ=1000
+
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# The uplink task builds an 8 kB JSON body and runs an HTTP client on top of it.
+CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS=y
+CONFIG_MQTT_PROTOCOL_311=y
+
+# Long filenames off: the spool uses 8.3 names on purpose, so a card pulled out
+# of the box mounts on anything.
+CONFIG_FATFS_LFN_NONE=y
+CONFIG_FATFS_CODEPAGE_437=y
+
+# The gateway is mains or large-battery powered and must not sleep: a mesh whose
+# only exit is asleep is a mesh with no exit.
+CONFIG_PM_ENABLE=n
+CONFIG_ESP_WIFI_SLP_IRAM_OPT=n
+
+# Enough sockets for the uplink (HTTP or MQTT), SNTP, and the on-site web
+# server with several phones connected to it, all at once.
+CONFIG_LWIP_MAX_SOCKETS=16
+
+# The on-site web UI: one page, a handful of JSON endpoints, served from flash.
+CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
+CONFIG_HTTPD_MAX_URI_LEN=512
+
+CONFIG_ESP_TASK_WDT_INIT=n
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y

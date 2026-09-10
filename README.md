@@ -6,11 +6,14 @@ of sensor nodes over the mine panel.
 
 ```
  NODE ×21  ──LoRa 865MHz mesh──►  GATEWAY  ──HTTP/MQTT──►  API  ──WS/REST──►  DASHBOARD
- ESP32-S3 mini                    ESP32 mini               FastAPI            React
+ ESP32-S3 mini                    ESP32-S3 mini            FastAPI            React
  LIS3DH tilt + vibration + temp   E220 LoRa (SPI)          TimescaleDB        Leaflet 2-D
- vibration sensor (wake IRQ)      SIM800L V2 SMS           PostGIS            Three.js 3-D
- NEO-6M GNSS                      flash buffer             risk + alerts
+ vibration sensor (wake IRQ)      SIM800L 2G SMS           PostGIS            Three.js 3-D
+ NEO-6M GNSS                      microSD store+forward    risk + alerts
  E220-900M22S (LLCC68, SPI)       local rule engine        field reconstruction
+                                  on-site web UI (own AP)
+                                  realtime JSON push
+                                  status LED + on-box diagnostics
         ◄────────────── config downlink ──────────────────────┘
 ```
 
@@ -63,10 +66,12 @@ simulator can drive it, so can the field.
 |---|---|
 | `packages/subnet-proto` | The wire protocol + its conformance tests. Shared by backend and simulator. |
 | `firmware/common/mesh_proto.h` | The same protocol in C, for the ESP32 |
+| `firmware/node`, `firmware/gateway` | ESP-IDF applications on the same ESP32-S3 board: duty cycle, mesh relay, deep sleep; spool, uplink, offline SMS, on-site web UI |
+| `firmware/host_test` | The firmware's portable core, tested with `cc` and no hardware |
 | `ml/simulator` | Physics, sensor error model, labelled scenarios, mesh routing, virtual gateway |
 | `backend` | FastAPI: ingest, risk scoring, alerting, config downlink, REST + WebSocket |
 | `web` | React dashboard — Leaflet 2-D map, Three.js 3-D terrain |
-| `docs` | Protocol spec and architecture notes |
+| `docs` | Protocol spec, end-to-end workflow, and the hardware build sheet |
 
 ## Tests
 
@@ -79,6 +84,7 @@ make test
 | `packages/subnet-proto` (32) | Frame round-trips, corruption handling, C↔Python byte identity |
 | `ml` (122) | Subsidence physics, sensor error model, scenario labels, mesh self-healing |
 | `backend` (63) | Ingest, baselines, field reconstruction, alerts, config downlink, topology |
+| `firmware/host_test` (325) | Frame codec under bit flips, mesh flood termination, NMEA, node thresholds and rates, gateway alerting rules, indicator priority |
 
 ## Design notes worth knowing
 

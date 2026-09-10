@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MineGuard gateway</title>
+<!--
+  Served from the gateway's own flash, over its own access point if necessary.
+  No framework, no CDN, no web fonts: a page that fetches anything from the
+  internet is a page that is blank exactly where it is needed -- next to a
+  gateway whose backhaul is down.
+-->
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#fff; --line:#dfe3e8; --ink:#1b1f24; --dim:#5c6773;
+  --ok:#1f8a4c; --warn:#b26a00; --bad:#c0392b; --accent:#2b6cb0;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#14171a; --panel:#1c2024; --line:#2c3238; --ink:#e6e9ec;
+         --dim:#98a2ad; --ok:#4ade80; --warn:#fbbf24; --bad:#f87171; --accent:#60a5fa; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+     font:14px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{padding:14px 16px;border-bottom:1px solid var(--line);background:var(--panel);
+       position:sticky;top:0;z-index:2}
+h1{margin:0;font-size:16px;letter-spacing:.02em}
+h1 small{color:var(--dim);font-weight:400;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);
+      color:var(--dim);white-space:nowrap}
+.chip.ok{color:var(--ok);border-color:var(--ok)}
+.chip.warn{color:var(--warn);border-color:var(--warn)}
+.chip.bad{color:var(--bad);border-color:var(--bad)}
+main{padding:16px;max-width:1100px;margin:0 auto}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.card h2{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;
+         color:var(--dim);font-weight:600}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:2px 0}
+.kv span:last-child{font-variant-numeric:tabular-nums;text-align:right}
+.big{font-size:22px;font-variant-numeric:tabular-nums}
+section{margin-top:20px}
+section>h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);
+           margin:0 0 8px}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;min-width:720px}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);
+      font-variant-numeric:tabular-nums;white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);
+   font-weight:600;text-align:right;position:sticky;top:0;background:var(--panel)}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border-bottom:0}
+tr.stale td{color:var(--dim)}
+td.evt{color:var(--warn)}
+td.evt.sev3{color:var(--bad);font-weight:600}
+.note{color:var(--dim);font-size:12px;margin-top:8px}
+button{font:inherit;padding:7px 12px;border-radius:6px;border:1px solid var(--line);
+       background:var(--panel);color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+form{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+label{display:block;font-size:12px;color:var(--dim);margin-bottom:3px}
+input{width:100%;font:inherit;padding:6px 8px;border-radius:6px;
+      border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+details{margin-top:8px}
+summary{cursor:pointer;color:var(--accent)}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:var(--panel);
+       border:1px solid var(--line);border-radius:6px;padding:8px 14px;box-shadow:0 4px 14px #0003;
+       display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MINEGUARD <small id="who">gateway</small></h1>
+  <div class="chips" id="chips"></div>
+</header>
+
+<main>
+  <p class="note" id="ledmeaning" style="margin:0 0 12px"></p>
+  <div class="grid">
+    <div class="card">
+      <h2>Uplink</h2>
+      <div class="big" id="posted">–</div>
+      <div class="kv"><span>frames posted</span><span id="uptransport">–</span></div>
+      <div class="kv"><span>failures</span><span id="upfail">–</span></div>
+      <div class="kv"><span>downlinks</span><span id="updown">–</span></div>
+      <div class="kv"><span>backend</span><span id="upapi">–</span></div>
+      <div class="kv"><span>realtime push</span><span id="uppush">off</span></div>
+    </div>
+    <div class="card">
+      <h2>Spool</h2>
+      <div class="big" id="spooldepth">–</div>
+      <div class="kv"><span>frames waiting</span><span id="spoolback">–</span></div>
+      <div class="kv"><span>shed (queue full)</span><span id="spoolshed">–</span></div>
+      <div class="note" id="spoolnote"></div>
+    </div>
+    <div class="card">
+      <h2>Mesh</h2>
+      <div class="big" id="rxtotal">–</div>
+      <div class="kv"><span>frames received</span><span></span></div>
+      <div class="kv"><span>duplicates</span><span id="rxdup">–</span></div>
+      <div class="kv"><span>corrupt</span><span id="rxbad">–</span></div>
+      <div class="kv"><span>relayed by us</span><span id="relayed">–</span></div>
+    </div>
+    <div class="card">
+      <h2>SMS</h2>
+      <div class="big" id="smssent">–</div>
+      <div class="kv"><span>messages sent</span><span id="smsmodem">–</span></div>
+      <div class="kv"><span>signal</span><span id="smscsq">–</span></div>
+      <div class="kv"><span>suppressed</span><span id="smssupp">–</span></div>
+      <div class="kv"><span>to</span><span id="smsto">–</span></div>
+    </div>
+    <div class="card">
+      <h2>Network</h2>
+      <div class="kv"><span>site wifi</span><span id="netsta">–</span></div>
+      <div class="kv"><span>address</span><span id="netip">–</span></div>
+      <div class="kv"><span>signal</span><span id="netrssi">–</span></div>
+      <div class="kv"><span>on-site AP</span><span id="netap">–</span></div>
+      <div class="kv"><span>clients</span><span id="netclients">–</span></div>
+      <div class="kv"><span>reachable</span><span id="neturl">–</span></div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Field <small id="nodecount" style="color:var(--dim)"></small></h2>
+    <div class="scroll">
+      <table>
+        <thead><tr>
+          <th>Node</th><th>Last heard</th><th>Frames</th><th>Tilt (raw)</th>
+          <th>Vib</th><th>Temp</th><th>Battery</th><th>RSSI</th><th>SNR</th>
+          <th>Hops</th><th>GNSS</th><th>Last event</th>
+        </tr></thead>
+        <tbody id="nodes"><tr><td colspan="12">waiting for the first frame…</td></tr></tbody>
+      </table>
+    </div>
+    <p class="note">
+      Tilt here is <strong>raw</strong> — no commissioning baseline and no thermal
+      correction — so it mostly describes how each post was hammered in. It is the
+      right number for “this node is reporting” and the wrong one for “this node is
+      in trouble”; that judgement is made by the backend, which has the baselines
+      and the whole array. Rows dim after three minutes of silence.
+    </p>
+  </section>
+
+  <section>
+    <h2>Actions</h2>
+    <div class="row">
+      <button id="btnsms">Send test SMS</button>
+      <button id="btnreboot">Reboot gateway</button>
+    </div>
+    <details>
+      <summary>Settings</summary>
+      <p class="note">
+        Written to NVS. Saving WiFi credentials joins that network immediately —
+        watch the <em>Network</em> card above for the result — and the page stays
+        reachable on this access point either way. The <strong>backend URL</strong>
+        receives raw protocol frames and is the system of record; the
+        <strong>realtime push URL</strong> is optional and receives a decoded
+        JSON document of the gateway and every node it has heard, every ten
+        seconds, for anything else that wants the data.
+      </p>
+      <div class="row" style="margin-bottom:8px">
+        <button type="button" id="btnscan">Scan for networks</button>
+        <select id="scanlist" style="display:none"></select>
+      </div>
+      <form id="settings">
+        <div>
+          <label>Site WiFi SSID</label>
+          <input name="wifi_ssid" id="ssid" list="ssids">
+          <datalist id="ssids"></datalist>
+        </div>
+        <div><label>Site WiFi password</label><input name="wifi_pass" type="password" placeholder="unchanged"></div>
+        <div><label>Backend URL</label><input name="api_url" placeholder="http://10.0.0.5:8000"></div>
+        <div><label>MQTT broker (blank = HTTP only)</label><input name="mqtt_host"></div>
+        <div><label>Site slug</label><input name="site"></div>
+        <div><label>Gateway id</label><input name="gateway_id"></div>
+        <div><label>SMS recipients (comma separated)</label><input name="sms" placeholder="+919876543210,+911234567890"></div>
+        <div>
+          <label>Realtime push URL (optional)</label>
+          <input name="push_url" placeholder="https://example.com/mineguard-hook">
+        </div>
+        <div><label>This AP's password (8+ chars)</label><input name="ap_pass" type="password" placeholder="unchanged"></div>
+        <div style="grid-column:1/-1"><button class="primary" type="submit">Save</button></div>
+      </form>
+    </details>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let toastTimer;
+
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.display = 'none', 4000);
+}
+
+function dur(s){
+  if (s < 60) return s + ' s';
+  if (s < 3600) return Math.floor(s/60) + ' m';
+  if (s < 86400) return Math.floor(s/3600) + ' h';
+  return Math.floor(s/86400) + ' d';
+}
+
+function chip(text, cls){ return '<span class="chip ' + (cls||'') + '">' + text + '</span>'; }
+
+async function refreshStatus(){
+  let s;
+  try { s = await (await fetch('/api/status')).json(); }
+  catch(e){ $('chips').innerHTML = chip('gateway unreachable','bad'); return; }
+
+  $('who').textContent = s.gateway + ' · ' + s.site + ' · node 0x' +
+                         s.addr.toString(16).padStart(4,'0');
+
+  // The header answers, in order, the questions somebody standing here asks.
+  const chips = [
+    chip(s.mesh.radio_up ? 'radio up' : 'RADIO DOWN', s.mesh.radio_up ? 'ok' : 'bad'),
+    chip(s.wifi.sta_up ? 'wifi up' : 'wifi down', s.wifi.sta_up ? 'ok' : 'warn'),
+    chip(s.uplink.link_down ? 'backend unreachable' : 'backend ok',
+         s.uplink.link_down ? 'bad' : 'ok'),
+    chip(s.sms.modem ? (s.sms.registered ? 'modem registered' : 'modem, no network')
+                     : 'NO MODEM',
+         s.sms.modem ? (s.sms.registered ? 'ok' : 'warn') : 'bad'),
+    chip(s.time_valid ? 'clock set' : 'NO CLOCK', s.time_valid ? 'ok' : 'warn'),
+    chip('up ' + dur(s.uptime_s)),
+  ];
+  // Mirror the LED on the box itself: somebody counting blinks in the dark can
+  // read the same thing here, with the sentence that explains it.
+  if (s.led) {
+    const cls = s.led.code === 'ok' ? 'ok'
+              : (s.led.code === 'radio_down' || s.led.code === 'field_silent') ? 'bad' : 'warn';
+    const shape = s.led.blinks ? s.led.blinks + '\u00d7 blink' : 'fast flash';
+    chips.push(chip('LED ' + shape, cls));
+    $('ledmeaning').textContent = s.led.code === 'ok' ? '' : s.led.meaning;
+  }
+  if (!s.spool.backing.startsWith('micro'))
+    chips.push(chip('no SD — buffer lost on reboot','warn'));
+  $('chips').innerHTML = chips.join('');
+
+  $('posted').textContent = s.uplink.posted;
+  $('uptransport').textContent = s.uplink.transport;
+  $('upfail').textContent = s.uplink.failures;
+  $('updown').textContent = s.uplink.downlinks;
+  $('upapi').textContent = s.uplink.api.replace(/^https?:\/\//,'');
+  $('uppush').textContent = s.push && s.push.url
+    ? (s.push.last_age_s >= 0 ? s.push.sent + ' sent, ' + s.push.last_age_s + ' s ago'
+                              : (s.push.failures ? s.push.failures + ' failed' : 'waiting'))
+    : 'off';
+
+  $('spooldepth').textContent = s.spool.depth;
+  $('spoolback').textContent = s.spool.backing;
+  $('spoolshed').textContent = s.spool.shed;
+  $('spoolnote').textContent = s.spool.depth > 0
+    ? 'Frames are held until the backend acknowledges them.'
+    : 'Everything heard has been delivered.';
+
+  $('rxtotal').textContent = s.mesh.rx_total;
+  $('rxdup').textContent = s.mesh.rx_dup;
+  $('rxbad').textContent = s.mesh.rx_bad;
+  $('relayed').textContent = s.mesh.relayed;
+
+  $('smssent').textContent = s.sms.sent;
+  $('smsmodem').textContent = s.sms.modem ? (s.sms.registered ? 'registered' : 'no network') : 'absent';
+  $('smscsq').textContent = s.sms.csq === 99 ? 'unknown' : s.sms.csq + '/31';
+  $('smssupp').textContent = s.sms.suppressed;
+  $('smsto').textContent = s.sms.recipients || 'nobody';
+
+  $('netsta').textContent = s.wifi.sta_ssid || 'not configured';
+  $('netip').textContent = s.wifi.sta_ip || '–';
+  $('netrssi').textContent = s.wifi.rssi ? s.wifi.rssi + ' dBm' : '–';
+  $('netap').textContent = s.wifi.ap_ssid + ' (' + s.wifi.ap_ip + ')';
+  $('netclients').textContent = s.wifi.ap_clients;
+  // Both addresses this page answers on, so somebody on the AP knows where to
+  // find it once the gateway is on the site network.
+  $('neturl').textContent = s.wifi.sta_up && s.wifi.sta_ip
+    ? 'http://' + s.wifi.sta_ip + ' · http://' + s.wifi.ap_ip
+    : 'http://' + s.wifi.ap_ip;
+}
+
+function tilt(n){
+  if (!n.have_tlm) return '–';
+  return Math.round(Math.hypot(n.pitch_mdeg, n.roll_mdeg)) + ' mdeg';
+}
+
+const FLAGS = [
+  [1,'tilt fault'], [2,'gnss fault'], [4,'vib fault'],
+  [8,'uncalibrated'], [16,'low battery'], [32,'relaying'],
+];
+
+async function refreshNodes(){
+  let d;
+  try { d = await (await fetch('/api/nodes')).json(); } catch(e){ return; }
+
+  const rows = d.nodes
+    .sort((a,b) => a.addr - b.addr)
+    .map(n => {
+      // Three minutes, the same staleness the backend's snapshot uses, so the
+      // two never disagree about which node has gone quiet.
+      const stale = n.age_s > 180;
+      const flags = FLAGS.filter(f => (n.flags & f[0])).map(f => f[1]).join(', ');
+      const evt = n.event
+        ? '<td class="evt sev' + n.event_sev + '">' + n.event + '</td>'
+        : '<td>' + (flags || '–') + '</td>';
+      return '<tr class="' + (stale ? 'stale' : '') + '">' +
+        '<td>0x' + n.addr.toString(16).padStart(4,'0') + '</td>' +
+        '<td>' + dur(n.age_s) + ' ago</td>' +
+        '<td>' + n.frames + '</td>' +
+        '<td>' + tilt(n) + '</td>' +
+        '<td>' + (n.have_tlm ? n.vib_rms_mg + ' mg' : '–') + '</td>' +
+        '<td>' + (n.have_tlm ? n.temp_c.toFixed(1) + ' °C' : '–') + '</td>' +
+        '<td>' + (n.have_tlm && n.vbat_mv ? (n.vbat_mv/1000).toFixed(2) + ' V' : '–') + '</td>' +
+        '<td>' + n.rssi + ' dBm</td>' +
+        '<td>' + n.snr_db.toFixed(1) + ' dB</td>' +
+        '<td>' + n.hops + '</td>' +
+        '<td>' + (n.have_tlm ? (n.fix ? n.sats + ' sats' : 'no fix') : '–') + '</td>' +
+        evt + '</tr>';
+    });
+
+  $('nodes').innerHTML = rows.length ? rows.join('')
+    : '<tr><td colspan="12">nothing heard yet — check the radio and the antenna</td></tr>';
+  $('nodecount').textContent = rows.length ? '· ' + rows.length + ' nodes heard' : '';
+}
+
+async function post(path, body){
+  const r = await fetch(path, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: body ? JSON.stringify(body) : '{}',
+  });
+  return r.json();
+}
+
+$('btnsms').onclick = async e => {
+  e.target.disabled = true;
+  toast('sending — a 2G send takes several seconds…');
+  try {
+    const r = await post('/api/sms-test');
+    toast(r.ok ? 'sent to ' + r.recipients + ' recipient(s)'
+               : 'not sent — check the modem, its supply and the recipient list');
+  } catch(err){ toast('request failed'); }
+  e.target.disabled = false;
+};
+
+$('btnreboot').onclick = async () => {
+  if (!confirm('Reboot the gateway? Spooled frames survive on the SD card; ' +
+               'anything held in RAM does not.')) return;
+  try { await post('/api/reboot'); } catch(e){}
+  toast('rebooting — this page will reconnect on its own');
+};
+
+$('btnscan').onclick = async e => {
+  e.target.disabled = true;
+  const label = e.target.textContent;
+  e.target.textContent = 'scanning…';
+  try {
+    const r = await (await fetch('/api/wifi/scan')).json();
+    const list = $('scanlist');
+    // Strongest first, and the signal shown: on a mine site half the networks
+    // in range are somebody's phone and will not still be there tomorrow.
+    list.innerHTML = '<option value="">pick a network…</option>' +
+      r.networks.map(n =>
+        '<option value="' + n.ssid.replace(/"/g,'&quot;') + '">' +
+        n.ssid + '  (' + n.rssi + ' dBm' + (n.secured ? '' : ', open') + ')</option>').join('');
+    list.style.display = r.networks.length ? '' : 'none';
+    toast(r.networks.length ? r.networks.length + ' network(s) found'
+                            : 'nothing in range');
+  } catch(err){ toast('scan failed'); }
+  e.target.textContent = label;
+  e.target.disabled = false;
+};
+
+$('scanlist').onchange = e => {
+  if (e.target.value) { $('ssid').value = e.target.value; $('ssid').focus(); }
+};
+
+$('settings').onsubmit = async e => {
+  e.preventDefault();
+  const body = {};
+  // Only send what was actually typed: an empty field means "leave it alone",
+  // not "erase it".
+  for (const [k,v] of new FormData(e.target)) if (v !== '') body[k] = v;
+  try {
+    const r = await post('/api/settings', body);
+    toast(r.note);
+  } catch(err){ toast('save failed'); }
+};
+
+refreshStatus(); refreshNodes();
+setInterval(refreshStatus, 2000);
+setInterval(refreshNodes, 2000);
+</script>
+</body>
+</html>

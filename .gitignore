@@ -18,3 +18,11 @@ android/.gradle/
 *.db-journal
 *.db-wal
 *.db-shm
+
+# ESP-IDF generates these per checkout. sdkconfig.defaults is the file that is
+# actually checked in -- the generated sdkconfig is derived from it, and
+# committing one would let a stale local setting outlive the defaults.
+firmware/*/sdkconfig
+firmware/*/sdkconfig.old
+firmware/*/managed_components/
+firmware/*/dependencies.lock

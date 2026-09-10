@@ -13,7 +13,7 @@ PY   := $(VENV)/bin/python
 PIP  := $(VENV)/bin/pip
 
 .DEFAULT_GOAL := help
-.PHONY: help install api gateway web test test-proto test-ml test-backend up down logs clean
+.PHONY: help install api gateway web test test-proto test-ml test-backend test-firmware up down logs clean
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -39,7 +39,7 @@ demo: ## Warm the database with two simulated days, then stream live
 	  --api http://localhost:8000 --ticks 200 --interval 0.01
 	$(MAKE) gateway
 
-test: test-proto test-ml test-backend  ## Run every suite
+test: test-proto test-ml test-backend test-firmware  ## Run every suite
 
 test-proto:  ## Wire-protocol conformance, including the C header
 	cd packages/subnet-proto && ../../$(VENV)/bin/python -m pytest -q
@@ -49,6 +49,9 @@ test-ml:  ## Physics, sensors, scenarios and mesh routing
 
 test-backend:  ## API, ingest, baselines, alerts and config downlink
 	cd backend && ../$(VENV)/bin/python -m pytest -q
+
+test-firmware:  ## The firmware's portable core -- no ESP-IDF, no hardware
+	firmware/host_test/run.sh
 
 up:  ## Bring up the deployed stack (TimescaleDB, Mosquitto, Redis, API, web)
 	docker compose up -d --build

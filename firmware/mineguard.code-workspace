@@ -1,0 +1,33 @@
+{
+    // Open THIS file (File -> Open Workspace from File...) rather than the
+    // firmware/ folder.
+    //
+    // firmware/ is not an ESP-IDF project and has no CMakeLists.txt -- it is a
+    // container for two separate projects that happen to share the components/
+    // directory next to them. Pointing the Espressif extension at firmware/
+    // gives "CMakeLists.txt not found in project directory", which is exactly
+    // right and exactly unhelpful.
+    //
+    // With this workspace open, both projects are listed in the explorer and
+    // the extension's status bar has a folder picker: choose "node" or
+    // "gateway" before pressing build or flash.
+    "folders": [
+        { "name": "node    (ESP32-S3 field node)", "path": "node" },
+        { "name": "gateway (ESP32-S3 gateway)",    "path": "gateway" },
+        { "name": "shared  (components, protocol, host tests)", "path": "." }
+    ],
+    "settings": {
+        "idf.adapterTargetName": "esp32s3",
+        "idf.flashType": "UART",
+        "files.associations": {
+            "*.h": "c",
+            "*.c": "c"
+        }
+    },
+    "extensions": {
+        "recommendations": [
+            "espressif.esp-idf-extension",
+            "ms-vscode.cpptools"
+        ]
+    }
+}

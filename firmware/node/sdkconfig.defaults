@@ -1,0 +1,37 @@
+# Node defaults. Checked in so every board is built the same way -- a node that
+# behaves differently because of somebody's local menuconfig is a node whose
+# field data cannot be compared with its neighbours'.
+
+CONFIG_IDF_TARGET="esp32s3"
+
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+
+# The console is the provisioning interface (components/nodecfg/cli.c) and on an
+# S3 mini it is the native USB port -- there is no USB-serial bridge on the board.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# 1 ms ticks. The radio driver waits on BUSY with vTaskDelay(1); at the default
+# 100 Hz that single tick becomes 10 ms and every SPI transaction pays it.
+CONFIG_FREERTOS_HZ=1000
+
+# app_main runs the whole duty cycle, including float maths and the NMEA parser.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# A watchdog that fires during a 45 s GNSS acquisition would reboot the node
+# every time it looked for the sky. The loop is bounded by its own timeouts.
+CONFIG_ESP_TASK_WDT_INIT=n
+
+# Deep sleep is the entire power budget: hold the RTC memory that carries the
+# clock and the tilt history, and power everything else down.
+CONFIG_ESP_SLEEP_POWER_DOWN_FLASH=y
+CONFIG_PM_ENABLE=n
+
+# Brown-out at 3.0 V. A node whose cell is sagging under a transmit burst should
+# reset cleanly rather than write half a config to NVS.
+CONFIG_ESP_BROWNOUT_DET=y
+CONFIG_ESP_BROWNOUT_DET_LVL_SEL_7=y
+
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y

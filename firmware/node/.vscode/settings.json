@@ -1,0 +1,17 @@
+{
+    // Project facts, checked in so every machine builds this the same way.
+    // Machine-specific things -- where ESP-IDF lives, which serial port the
+    // board is on -- belong in your VS Code user settings, not here.
+    "idf.adapterTargetName": "esp32s3",
+    "idf.flashType": "UART",
+    "idf.openOcdConfigs": [
+        "board/esp32s3-builtin.cfg"
+    ],
+    "files.associations": {
+        "*.h": "c",
+        "*.c": "c"
+    },
+    "C_Cpp.default.cStandard": "c11",
+    "C_Cpp.intelliSenseEngine": "default",
+    "idf.currentSetup": "/home/vishal/.espressif/v6.1/esp-idf"
+}

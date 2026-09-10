@@ -1,0 +1,7 @@
+# Name,   Type, SubType, Offset,  Size
+# NVS holds the node's identity and its running config -- the reason one binary
+# can flash to every board in the field. Sized generously: it is rewritten on
+# every accepted config downlink and NVS wear-levels across whatever it is given.
+nvs,      data, nvs,     0x9000,  0x6000
+phy_init, data, phy,     0xf000,  0x1000
+factory,  app,  factory, 0x10000, 0x300000

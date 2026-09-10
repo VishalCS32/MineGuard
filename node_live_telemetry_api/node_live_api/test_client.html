@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>NODE-001 Live Telemetry Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 1000px; margin: 30px auto; }
+    pre { background:#111; color:#eee; padding:20px; border-radius:10px; overflow:auto; }
+    .ok { color: green; font-weight:bold; }
+  </style>
+</head>
+<body>
+  <h1>NODE-001 Live Telemetry</h1>
+  <p>Status: <span id="status">Connecting...</span></p>
+  <pre id="data">Waiting for telemetry...</pre>
+
+  <script>
+    const status = document.getElementById("status");
+    const output = document.getElementById("data");
+
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    const host = location.hostname || "localhost";
+    const socket = new WebSocket(`${protocol}://${host}:8000/ws/NODE-001`);
+
+    socket.onopen = () => {
+      status.textContent = "CONNECTED";
+      status.className = "ok";
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      output.textContent = JSON.stringify(data, null, 2);
+    };
+
+    socket.onclose = () => {
+      status.textContent = "DISCONNECTED";
+      status.className = "";
+    };
+  </script>
+</body>
+</html>

@@ -2,8 +2,9 @@
  * SUBSIDENCE-NET mesh wire protocol  --  v1
  *
  * Single source of truth for the over-the-air frame format. Mirrored byte-for-byte
- * by backend/app/proto.py; backend/tests/test_proto.py checks both against the same
- * golden vectors in docs/golden_frames.json.
+ * by packages/subnet-proto/subnet_proto/proto.py. The conformance suite in
+ * packages/subnet-proto/tests/ compiles this header and asserts both encoders
+ * emit identical bytes, so firmware and backend cannot silently drift apart.
  *
  * Radio: EByte E220-900M22S, India WPC de-licensed ISM band 865-867 MHz.
  * All multi-byte fields are LITTLE-ENDIAN (native ESP32 order, no swapping needed).
