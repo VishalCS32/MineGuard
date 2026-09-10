@@ -17,6 +17,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from requests import session
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +26,8 @@ from .deformation import NodeTilt, estimate_field
 from .models import alerts as alerts_t
 from .models import mesh_links, nodes as nodes_t, sites as sites_t, telemetry
 from .risk import Thresholds, assess, corrected_tilt_mdeg
+from .ml_client import predict
+from .ml_payload import build_history, build_ml_payload
 
 SEVERITY_NAMES = {0: "medium", 1: "medium", 2: "high", 3: "critical"}
 
@@ -35,27 +38,48 @@ def _utc(dt: datetime | None) -> datetime | None:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-async def latest_telemetry(session: AsyncSession, node_ids: list[int]) -> dict[int, Any]:
-    """Most recent frame per node.
+async def latest_telemetry(
+    session: AsyncSession,
+    node_ids: list[int],
+) -> dict[int, Any]:
+    """Most recent frame per node, including the node label."""
 
-    Uses a correlated max(time) rather than a window function so the query is
-    identical on SQLite and Postgres.
-    """
     if not node_ids:
         return {}
+
     newest = (
-        sa.select(telemetry.c.node_id, sa.func.max(telemetry.c.time).label("t"))
+        sa.select(
+            telemetry,
+            nodes_t.c.label.label("node_label"),
+            nodes_t.c.addr.label("node_addr"),
+        )
         .where(telemetry.c.node_id.in_(node_ids))
         .group_by(telemetry.c.node_id)
         .subquery()
     )
-    stmt = sa.select(telemetry).join(
-        newest,
-        sa.and_(telemetry.c.node_id == newest.c.node_id, telemetry.c.time == newest.c.t),
-    )
-    rows = (await session.execute(stmt)).mappings().all()
-    return {r["node_id"]: r for r in rows}
 
+    stmt = (
+        sa.select(
+            telemetry,
+            nodes_t.c.label.label("node_label"),
+            nodes_t.c.addr.label("node_addr"),
+        )
+        .join(
+            newest,
+            sa.and_(
+                telemetry.c.node_id == newest.c.node_id,
+                telemetry.c.time == newest.c.time,
+            ),
+        )
+        .join(
+            nodes_t,
+            nodes_t.c.id == telemetry.c.node_id,
+        )
+    )
+
+    rows = (await session.execute(stmt)).mappings().all()
+
+    return {r["node_id"]: r for r in rows}
 
 async def build_snapshot(session: AsyncSession, settings: Settings,
                          site_slug: str | None = None) -> dict[str, Any]:
@@ -86,6 +110,21 @@ async def build_snapshot(session: AsyncSession, settings: Settings,
                               settings.tilt_rate_window_hours)
     field = _reconstruct(node_rows, latest, site, settings)
 
+    history_since = now - timedelta(hours=settings.tilt_rate_window_hours)
+    history = await build_history(
+        session,
+        [n["id"] for n in node_rows],
+        history_since,
+    )
+
+    ml_payload = build_ml_payload(
+        list(latest.values()),
+        history=history,
+        field=field,
+    )
+
+    ml_prediction = await predict(ml_payload)
+    
     out_nodes: list[dict[str, Any]] = []
     hops_by_addr: dict[int, int] = {}
     for n in node_rows:
@@ -163,7 +202,7 @@ async def build_snapshot(session: AsyncSession, settings: Settings,
         "nodes": out_nodes,
         "links": links,
         "alerts": [_alert_json(a) for a in alert_rows],
-        "prediction": await _prediction(session, site["id"], out_nodes),
+        "prediction": ml_prediction,
         "kpis": {
             "totalNodes": len(out_nodes),
             "activeNodes": len(live),

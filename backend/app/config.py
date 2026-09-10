@@ -46,6 +46,8 @@ class Settings(BaseSettings):
 
     # A node unheard from for longer than this is treated as offline.
     node_stale_seconds: int = 180
+    # ML inference service
+    ml_service_url: str = "http://localhost:8100"
 
     @property
     def is_postgres(self) -> bool:
