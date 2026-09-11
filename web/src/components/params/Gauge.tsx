@@ -64,7 +64,7 @@ export function Gauge({ label, value, limit, unit, decimals = 2, note }: Props) 
         />
       </svg>
       <div className="-mt-3.5 text-center">
-        <div className="text-[17px] font-semibold leading-none tracking-tight" style={{ color: colour }}>
+        <div className="font-mono tabular-nums text-[17px] font-semibold leading-none tracking-tight" style={{ color: colour }}>
           {value.toFixed(decimals)}
         </div>
         <div className="mt-0.5 text-[9px] text-ink-3">{unit}</div>

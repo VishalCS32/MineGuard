@@ -15,6 +15,8 @@ import { GATEWAY_LOCAL, buildField, type NodeSpec } from './field';
 import {
   DEMO_PANEL, completion as surfaceCompletion, faceX as surfaceFaceX, potholeAt,
 } from './surface';
+import { getSimulatedNode001Payload, getSimulatedPeerPayload } from '@/data/fixtures/node001Fixture';
+import { normalizeNodeTelemetry } from '@/data/telemetry';
 import type {
   AlertItem, Kpis, MeshLink, NodeReading, PredictionPoint, RiskLevel, Snapshot, TrendPoint,
 } from '@/data/types';
@@ -218,6 +220,24 @@ export class SimulatedSource implements DataSource {
     );
 
     const online = !this.offline.has(spec.addr);
+    const isNode001 = spec.id === '01' || spec.addr === 0x10;
+    const simTime = this.simTime(day);
+
+    let rawTelemetry;
+    if (isNode001) {
+      rawTelemetry = getSimulatedNode001Payload(simTime);
+    } else {
+      const idx = spec.addr - 0x10;
+      rawTelemetry = getSimulatedPeerPayload(`NODE-${spec.id}`, idx, simTime);
+    }
+
+    const nodeDetail = normalizeNodeTelemetry(rawTelemetry, {
+      source: 'simulator',
+      fallbackNodeId: isNode001 ? 'NODE-001' : `NODE-${spec.id}`,
+      fallbackAddr: spec.addr,
+      online,
+    });
+
     return {
       addr: spec.addr,
       id: spec.id,
@@ -229,23 +249,25 @@ export class SimulatedSource implements DataSource {
       isEdge: spec.isEdge,
       zone: spec.zone,
       online,
-      tiltPitchDeg,
-      tiltRollDeg,
-      tiltDeg,
+      tiltPitchDeg: isNode001 ? 0.12 : tiltPitchDeg,
+      tiltRollDeg: isNode001 ? 0.08 : tiltRollDeg,
+      tiltDeg: isNode001 ? Number(Math.hypot(0.12, 0.08).toFixed(3)) : tiltDeg,
       tiltRateDegPerH,
-      vibrationMg,
-      tempC: 28 + 4.5 * Math.cos((2 * Math.PI * ((day % 1) * 24 - 15)) / 24),
+      vibrationMg: isNode001 ? 18.5 : vibrationMg,
+      tempC: isNode001 ? 31.2 : 28 + 4.5 * Math.cos((2 * Math.PI * ((day % 1) * 24 - 15)) / 24),
       subsidenceMm: mv.subsidenceMm + ph.sub,
       subsidenceValid: true,
       strainMmPerM: strain,
       strainValid: true,
-      gnssSats: 7 + ((spec.addr + this.tick) % 5),
-      riskScore: Math.min(riskScore, 1),
-      risk: riskBand(riskScore),
+      gnssSats: isNode001 ? 14 : 7 + ((spec.addr + this.tick) % 5),
+      riskScore: isNode001 ? 0.78 : Math.min(riskScore, 1),
+      risk: isNode001 ? 'high' : riskBand(riskScore),
       damage: classifyDamage(strain, tiltMagnitude),
       hops: hops || 0,
-      rssi: -58 - hops * 14 + jitter * 3,
-      batteryPct: clamp(88 - (spec.addr % 7) * 4 + jitter * 3, 5, 100),
+      rssi: isNode001 ? -82 : -58 - hops * 14 + jitter * 3,
+      batteryPct: isNode001 ? 85 : clamp(88 - (spec.addr % 7) * 4 + jitter * 3, 5, 100),
+      rawTelemetry,
+      nodeDetail,
     };
   }
 
@@ -331,7 +353,7 @@ export class SimulatedSource implements DataSource {
     return this.simEpoch0 + day * 86_400_000;
   }
 
-  private snapshot(): Snapshot {
+  snapshot(): Snapshot {
     const now = this.simTime(this.day);
     const { hops, routeLinks } = this.solveRoutes();
     const nodes = this.nodes.map((s) => this.read(s, this.day, hops.get(s.addr) ?? 0));

@@ -1,96 +1,118 @@
-"""SUBSIDENCE-NET API.
+"""
+app/main.py
 
-Serves the live view over REST and WebSocket, ingests gateway frames over HTTP
-and (optionally) MQTT, and pushes node configuration back down to the mesh.
+MineGuard Backend API Service (§3.3, §10, §11).
+Integrates:
+- 17 REST endpoints for Health, Live Snapshot, Sites, Nodes, Alerts, Downlink, Provisioning, Ingest
+- WebSocket /ws/live broadcasting full real-time snapshots coalesced to ≤4 Hz
+- Embedded Knothe physics simulation loop feeding live frames into the ingest pipeline
 """
 
-from __future__ import annotations
-
 import asyncio
-import contextlib
-import logging
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import broadcaster, mqtt
-from .api import router
-from .config import get_settings
-from .db import dispose_db, get_sessionmaker, init_db
+from .config import settings
+from .db import init_db, async_session_factory
 from .hub import hub
+from .broadcaster import broadcaster
+from .api import router as api_router
+from .auth.router import router as auth_router
 from .state import build_snapshot
+from .ingest import ingest_frames
+from simulator.virtual_gateway import VirtualGatewayRunner
 
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s %(levelname)-7s %(name)s: %(message)s")
-log = logging.getLogger("subnet")
+
+async def _simulation_worker():
+    """
+    Background worker that runs Knothe physics simulations and ingests frames
+    periodically if SIMULATOR_ENABLED is True.
+    """
+    runner = VirtualGatewayRunner()
+    while True:
+        try:
+            frames = runner.generate_batch()
+            async with async_session_factory() as session:
+                await ingest_frames(session, frames, site_slug="jharia", gateway_slug="gw-01")
+        except Exception as e:
+            print(f"[Simulator Worker Error] {e}")
+        await asyncio.sleep(settings.SIMULATOR_TICK_SECONDS)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 1. Database & seed bootstrap
     await init_db()
+
+    # 2. Start WebSocket state broadcaster
     await broadcaster.start()
-    await mqtt.start()
-    log.info("SUBSIDENCE-NET API ready")
-    try:
-        yield
-    finally:
-        await mqtt.stop()
-        await broadcaster.stop()
-        await dispose_db()
+
+    # 3. Optional MQTT bridge
+    from .mqtt import start_mqtt_bridge, stop_mqtt_bridge
+    await start_mqtt_bridge()
+
+    # 4. Optional embedded physics simulator loop
+    sim_task = None
+    if settings.SIMULATOR_ENABLED:
+        sim_task = asyncio.create_task(_simulation_worker())
+
+    yield
+
+    # Teardown
+    if sim_task:
+        sim_task.cancel()
+        try:
+            await sim_task
+        except asyncio.CancelledError:
+            pass
+
+    await stop_mqtt_bridge()
+    await broadcaster.stop()
 
 
 app = FastAPI(
-    title="SUBSIDENCE-NET API",
-    version="1.0.0",
-    summary="Mine subsidence monitoring, prediction and early warning",
+    title="MineGuard Backend Service",
+    description="AI-enabled mine subsidence monitoring & early warning backend API.",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
-settings = get_settings()
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_list,
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(router)
 
+# Include REST endpoints
+app.include_router(auth_router)
+app.include_router(api_router)
+
+
+# -------------------------------------------------------------------------
+# WebSocket /ws/live (§5.3, §11)
+# -------------------------------------------------------------------------
 
 @app.websocket("/ws/live")
-async def live(websocket: WebSocket) -> None:
-    """Push the snapshot on connect, then on every change.
+async def websocket_live_endpoint(websocket: WebSocket):
+    await hub.connect(websocket)
 
-    The first message is a full snapshot rather than a delta, so a client that
-    reconnects after a dropped link is immediately correct instead of applying
-    updates to stale state -- which matters on a mine site where connectivity
-    comes and goes.
-    """
-    await websocket.accept()
-    queue = await hub.subscribe()
+    # Immediately push full snapshot upon connect (§5.3)
     try:
-        async with get_sessionmaker()() as session:
-            await websocket.send_json(await build_snapshot(session, settings))
+        async with async_session_factory() as session:
+            initial_snapshot = await build_snapshot(session)
+        await websocket.send_json(initial_snapshot)
+    except Exception as e:
+        print(f"[WS Initial Snapshot Error] {e}")
 
+    # Listen until client disconnects
+    try:
         while True:
-            try:
-                snapshot = await asyncio.wait_for(queue.get(), timeout=25)
-            except asyncio.TimeoutError:
-                # Keep-alive: idle proxies drop silent WebSockets.
-                await websocket.send_json({"type": "ping"})
-                continue
-            await websocket.send_json(snapshot)
+            await websocket.receive_text()
     except WebSocketDisconnect:
-        pass
-    except Exception:  # pragma: no cover
-        log.exception("websocket closed unexpectedly")
-    finally:
-        await hub.unsubscribe(queue)
-        with contextlib.suppress(Exception):
-            await websocket.close()
-
-
-@app.get("/")
-async def root() -> dict[str, str]:
-    return {"service": "subsidence-net", "docs": "/docs", "live": "/ws/live"}
+        await hub.disconnect(websocket)
+    except Exception:
+        await hub.disconnect(websocket)

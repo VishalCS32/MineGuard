@@ -24,7 +24,15 @@ export default defineConfig({
     // on one origin so there is no CORS dance in development.
     proxy: {
       '/api': { target: 'http://localhost:8000', changeOrigin: true },
-      '/ws': { target: 'ws://localhost:8000', ws: true },
+      '/ws': {
+        target: 'ws://localhost:8000',
+        ws: true,
+        configure: (proxy) => {
+          proxy.on('error', () => {
+            // Suppress noisy socket disconnects / ECONNABORTED in development
+          });
+        },
+      },
     },
   },
 });

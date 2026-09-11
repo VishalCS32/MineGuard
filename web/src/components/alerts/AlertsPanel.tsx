@@ -87,10 +87,11 @@ export function AlertsPanel({ alerts }: { alerts: AlertItem[] }) {
   );
 }
 
-export function ViewAllButton() {
+export function ViewAllButton({ onClick }: { onClick?: () => void } = {}) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className="focus-ring flex items-center gap-1 rounded px-1 text-[11px] font-medium text-ink-2 transition-colors hover:text-brand"
     >
       View All <IconChevron size={13} />

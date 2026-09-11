@@ -1,13 +1,30 @@
 import { motion } from 'framer-motion';
-import { IconBell, IconCloud, IconShield, IconUser } from '@/components/ui/icons';
+import { IconBell, IconCloud, IconLogout, IconShield, IconUser } from '@/components/ui/icons';
 import type { SourceStatus } from '@/data/source';
+import type { SourceMode } from '@/data/createSource';
+import type { UserProfile } from '@/api/auth';
 
 interface Props {
   alertCount: number;
   status: SourceStatus;
+  mode?: SourceMode;
+  onModeChange?: (mode: SourceMode) => void;
+  onNavigateAlerts?: () => void;
+  user?: UserProfile | null;
+  onLogout?: () => void;
+  onOpenLogin?: () => void;
 }
 
-export function TopBar({ alertCount, status }: Props) {
+export function TopBar({
+  alertCount,
+  status,
+  mode = 'remote',
+  onModeChange,
+  onNavigateAlerts,
+  user,
+  onLogout,
+  onOpenLogin,
+}: Props) {
   // Three honest states, never a green light that means nothing: live and
   // connected, live but the link has dropped, or running on the local model.
   const live = status.kind === 'live';
@@ -46,16 +63,34 @@ export function TopBar({ alertCount, status }: Props) {
         MineGuard — AI Enabled Smart Mine Subsidence Monitoring System
       </motion.h1>
 
-      {/* Status cluster */}
-      <div className="flex shrink-0 items-center gap-4">
-        <div className="flex items-center gap-2 text-xs" title={status.detail ?? ''}>
+      {/* Status & Source cluster */}
+      <div className="flex shrink-0 items-center gap-3">
+        {onModeChange && (
+          <div className="flex items-center gap-1.5 rounded-lg border border-hairline bg-surface-2 p-1 text-xs">
+            <span className="px-1 text-[10px] font-medium text-ink-3 uppercase">Feed:</span>
+            <select
+              value={mode}
+              onChange={(e) => onModeChange(e.target.value as SourceMode)}
+              className="rounded bg-surface-3 px-2 py-1 text-xs font-semibold text-brand outline-none cursor-pointer hover:bg-surface-3/80 transition-colors"
+            >
+              <option value="remote">Live Node API (NODE-001)</option>
+              <option value="simulated">Built-in Simulator</option>
+              <option value="local">Local Backend (Port 8000)</option>
+            </select>
+          </div>
+        )}
+
+        <div className="flex items-center gap-1.5 text-xs" title={status.detail ?? ''}>
           <IconCloud size={16} className={tone} />
-          <span className="text-ink-2">Cloud Sync:</span>
           <span className={`font-semibold ${tone}`}>{label}</span>
+          {status.connected && (
+            <span className="inline-block h-2 w-2 rounded-full bg-brand animate-pulse" />
+          )}
         </div>
 
         <button
           type="button"
+          onClick={onNavigateAlerts}
           className="focus-ring relative grid h-9 w-9 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
           aria-label={`${alertCount} active alerts`}
         >
@@ -74,13 +109,62 @@ export function TopBar({ alertCount, status }: Props) {
         </button>
 
         <div className="flex items-center gap-2.5 border-l border-hairline pl-4">
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-surface-3 text-ink-2">
-            <IconUser size={18} />
-          </span>
-          <div className="leading-tight">
-            <div className="text-[13px] font-semibold">Admin</div>
-            <div className="text-[10px] text-ink-3">Mine Operator</div>
-          </div>
+          {user ? (
+            <>
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-brand/15 text-brand ring-1 ring-brand/30">
+                <IconUser size={18} />
+              </span>
+              <div className="leading-tight max-w-[130px]">
+                <div className="truncate text-[13px] font-semibold text-ink" title={user.name}>
+                  {user.name}
+                </div>
+                <div
+                  className="truncate text-[10px] text-ink-3"
+                  title={user.email || user.phoneNumber || 'Mine Operator'}
+                >
+                  {user.role === 'admin'
+                    ? 'Administrator'
+                    : user.email || user.phoneNumber || 'Mine Operator'}
+                </div>
+              </div>
+
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="focus-ring ml-1 grid h-8 w-8 place-items-center rounded-lg text-ink-3 transition-colors hover:bg-critical/15 hover:text-critical"
+                  title="Sign Out"
+                  aria-label="Sign out of MineGuard"
+                >
+                  <IconLogout size={16} />
+                </button>
+              )}
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenLogin}
+              className="group flex items-center gap-2.5 rounded-lg py-1 px-2 transition-colors hover:bg-surface-2 cursor-pointer text-left border border-transparent hover:border-hairline"
+              title="Click to Sign In"
+            >
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-surface-3 text-ink-2 group-hover:bg-brand/15 group-hover:text-brand transition-colors">
+                <IconUser size={18} />
+              </span>
+              <div className="leading-tight max-w-[130px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate text-[13px] font-semibold text-ink group-hover:text-brand transition-colors">
+                    Sign In
+                  </span>
+                  <span className="rounded bg-brand/15 px-1 py-0.5 text-[9px] font-bold text-brand uppercase tracking-wider">
+                    Login
+                  </span>
+                </div>
+                <div className="truncate text-[10px] text-ink-3">
+                  Mine Operator
+                </div>
+              </div>
+            </button>
+          )}
         </div>
       </div>
     </header>

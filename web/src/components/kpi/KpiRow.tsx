@@ -48,7 +48,7 @@ function Tile({ label, value, sub, Icon, tone, index }: TileProps) {
       </span>
       <div className="min-w-0 leading-tight">
         <div className="truncate text-[11px] font-medium text-ink-2">{label}</div>
-        <div className="mt-0.5 text-[22px] font-semibold tracking-tight text-ink">{value}</div>
+        <div className="mt-0.5 font-mono tabular-nums text-[22px] font-semibold tracking-tight text-ink">{value}</div>
         <div className="mt-0.5 truncate text-[10px] text-ink-3">{sub}</div>
       </div>
     </motion.div>

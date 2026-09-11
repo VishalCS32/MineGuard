@@ -1,61 +1,76 @@
-"""Runtime configuration, from the environment."""
+"""
+app/config.py
 
-from __future__ import annotations
+Configuration settings and operational thresholds for MineGuard.
+Kept server-side so clients and gateways cannot diverge on safety limits.
+"""
 
-from functools import lru_cache
-
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
-
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-
-    # SQLite by default so the stack runs -- and can be demonstrated -- with no
-    # services to install. Compose overrides this with TimescaleDB, and the query
-    # layer is identical either way; only the hypertable DDL differs.
-    database_url: str = "sqlite+aiosqlite:///./subnet.db"
-
-    # MQTT is how real gateways report. Optional: if no broker is reachable the
-    # API still serves, and gateways can fall back to the HTTP ingest endpoint,
-    # which is also the simpler path for a constrained ESP32.
-    mqtt_host: str | None = None
-    mqtt_port: int = 1883
-    mqtt_uplink_topic: str = "subnet/gw/+/up"
-    mqtt_downlink_topic: str = "subnet/gw/{gateway}/cmd"
-
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
-
-    # Alerting thresholds. These are the operator-facing limits, kept on the
-    # server so the dashboard and the mobile app cannot disagree about them.
-    tilt_threshold_deg: float = 0.60      # 10 mm/m, the NCB-style disruptive limit
-    #: NCB "appreciable damage" boundary. Strain is reconstructed from the tilt
-    #: array (see deformation.py), not measured by any single node.
-    strain_threshold_mm_per_m: float = 3.00
-    vibration_threshold_mg: float = 400.0
-    #: Degrees per hour. The precursor threshold: ground that is accelerating
-    #: crosses this well before absolute tilt reaches its own limit, which is
-    #: where the early warning actually comes from now that there is no crack
-    #: gauge to catch the first opening.
-    tilt_rate_threshold_deg_per_h: float = 0.05
-    #: Thermal expansion of the mounting post, in milli-degrees of apparent tilt
-    #: per degree C. Measured per node during a commissioning thermal soak; this
-    #: is the design default for the standard post.
-    tilt_drift_mdeg_per_c: float = 18.0
-    #: How far back to look when fitting a node's tilt rate.
-    tilt_rate_window_hours: float = 6.0
-
-    # A node unheard from for longer than this is treated as offline.
-    node_stale_seconds: int = 180
-
-    @property
-    def is_postgres(self) -> bool:
-        return self.database_url.startswith(("postgresql", "postgres"))
-
-    @property
-    def cors_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+import os
+from dataclasses import dataclass, field
+from typing import List
 
 
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
+@dataclass
+class Settings:
+    # Persistence
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./subnet.db")
+
+    # Network / MQTT
+    MQTT_HOST: str | None = os.getenv("MQTT_HOST", None)
+    MQTT_PORT: int = int(os.getenv("MQTT_PORT", "1883"))
+    MQTT_UPLINK_TOPIC: str = os.getenv("MQTT_UPLINK_TOPIC", "subnet/gw/+/up")
+    MQTT_DOWNLINK_TOPIC: str = os.getenv("MQTT_DOWNLINK_TOPIC", "subnet/gw/{gateway}/cmd")
+
+    # CORS (Strict origin list without wildcard to support allow_credentials=True cookies)
+    CORS_ORIGINS: List[str] = field(default_factory=lambda: [
+        origin.strip() for origin in os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000"
+        ).split(",") if origin.strip() and origin.strip() != "*"
+    ])
+
+    # Authentication & Sessions
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "mineguard-dev-super-secure-jwt-signing-secret-key-32b-min")
+    JWT_ALGORITHM: str = "HS256"
+    SESSION_EXPIRE_DAYS: int = int(os.getenv("SESSION_EXPIRE_DAYS", "7"))
+    PASSWORD_RESET_EXPIRE_HOURS: int = int(os.getenv("PASSWORD_RESET_EXPIRE_HOURS", "1"))
+    SESSION_COOKIE_NAME: str = "mineguard_session"
+    SESSION_COOKIE_SECURE: bool = os.getenv("SESSION_COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
+
+    # Google OAuth 2.0 / OpenID Connect
+    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
+    GOOGLE_CALLBACK_URL: str = os.getenv("GOOGLE_CALLBACK_URL", "http://localhost:5173/auth/callback")
+
+    # External Provider Configurations (Optional - with explicit graceful degradation)
+    SMTP_HOST: str | None = os.getenv("SMTP_HOST", None)
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str | None = os.getenv("SMTP_USER", None)
+    SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD", None)
+    EMAILS_FROM_EMAIL: str = os.getenv("EMAILS_FROM_EMAIL", "noreply@mineguard.local")
+
+    TWILIO_ACCOUNT_SID: str | None = os.getenv("TWILIO_ACCOUNT_SID", None)
+    TWILIO_AUTH_TOKEN: str | None = os.getenv("TWILIO_AUTH_TOKEN", None)
+    TWILIO_PHONE_NUMBER: str | None = os.getenv("TWILIO_PHONE_NUMBER", None)
+
+    # Operator thresholds (§14.4)
+    TILT_THRESHOLD_DEG: float = float(os.getenv("TILT_THRESHOLD_DEG", "0.60"))
+    STRAIN_THRESHOLD_MM_PER_M: float = float(os.getenv("STRAIN_THRESHOLD_MM_PER_M", "3.00"))
+    VIBRATION_THRESHOLD_MG: float = float(os.getenv("VIBRATION_THRESHOLD_MG", "400.0"))
+    TILT_RATE_THRESHOLD_DEG_PER_H: float = float(os.getenv("TILT_RATE_THRESHOLD_DEG_PER_H", "0.05"))
+    TILT_DRIFT_MDEG_PER_C: float = float(os.getenv("TILT_DRIFT_MDEG_PER_C", "18.0"))
+    TILT_RATE_WINDOW_HOURS: float = float(os.getenv("TILT_RATE_WINDOW_HOURS", "6.0"))
+    NODE_STALE_SECONDS: int = int(os.getenv("NODE_STALE_SECONDS", "180"))
+
+    # Cooldowns and rates
+    ALERT_COOLDOWN_MINUTES: int = int(os.getenv("ALERT_COOLDOWN_MINUTES", "20"))
+    BROADCAST_MAX_HZ: float = float(os.getenv("BROADCAST_MAX_HZ", "4.0"))
+    KEEP_ALIVE_PING_S: float = float(os.getenv("KEEP_ALIVE_PING_S", "25.0"))
+
+    # Embedded simulation runner (default false; standalone virtual gateway drives simulation)
+    SIMULATOR_ENABLED: bool = os.getenv("SIMULATOR_ENABLED", "false").lower() in ("true", "1", "yes")
+    SIMULATOR_TICK_SECONDS: float = float(os.getenv("SIMULATOR_TICK_SECONDS", "1.5"))
+
+
+settings = Settings()
+

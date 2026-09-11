@@ -45,11 +45,35 @@ export function LeafletMap({
   handlersRef.current = { onSelect, onToggleNode };
 
   const extent = useMemo(() => panelExtent(), []);
+  // Detect geographic region (e.g. Delhi vs Jharia) stabilized by rounding to 1 decimal place
+  const centerLatKey = nodes.length > 0 ? Math.round(nodes[0].lat * 10) : 237;
+
   const bounds = useMemo(() => {
+    if (nodes.length > 0) {
+      let minLat = Infinity;
+      let maxLat = -Infinity;
+      let minLon = Infinity;
+      let maxLon = -Infinity;
+      for (const n of nodes) {
+        if (n.lat < minLat) minLat = n.lat;
+        if (n.lat > maxLat) maxLat = n.lat;
+        if (n.lon < minLon) minLon = n.lon;
+        if (n.lon > maxLon) maxLon = n.lon;
+      }
+      const latMargin = Math.max((maxLat - minLat) * 0.25, 0.001);
+      const lonMargin = Math.max((maxLon - minLon) * 0.25, 0.001);
+      return L.latLngBounds(
+        [minLat - latMargin, minLon - lonMargin],
+        [maxLat + latMargin, maxLon + lonMargin]
+      );
+    }
     const sw = localToWgs84(extent.xMin, extent.yMin);
     const ne = localToWgs84(extent.xMax, extent.yMax);
     return L.latLngBounds([sw.lat, sw.lon], [ne.lat, ne.lon]);
-  }, [extent]);
+  }, [centerLatKey, extent]);
+
+  const boundsRef = useRef(bounds);
+  boundsRef.current = bounds;
 
   // ------------------------------------------------------------------ setup
   useEffect(() => {
@@ -90,7 +114,7 @@ export function LeafletMap({
       map.invalidateSize({ animate: false });
       if (!framed && hostRef.current && hostRef.current.clientHeight > 80) {
         framed = true;
-        map.fitBounds(bounds, { padding: [24, 24] });
+        map.fitBounds(boundsRef.current, { padding: [24, 24] });
       }
     });
     ro.observe(hostRef.current);
@@ -98,7 +122,7 @@ export function LeafletMap({
     onReady?.({
       zoomIn: () => map.zoomIn(1),
       zoomOut: () => map.zoomOut(1),
-      recentre: () => map.flyToBounds(bounds, { padding: [24, 24], duration: 0.7 }),
+      recentre: () => map.flyToBounds(boundsRef.current, { padding: [24, 24], duration: 0.7 }),
     });
 
     return () => {
@@ -109,7 +133,17 @@ export function LeafletMap({
       heatRef.current = null;
       linkLayerRef.current = null;
     };
-  }, [bounds, onReady]);
+  }, [onReady]);
+
+  // Re-frame and update heat layer bounds whenever the site coordinates change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.fitBounds(bounds, { padding: [24, 24] });
+    if (heatRef.current) {
+      heatRef.current.setBounds(bounds);
+    }
+  }, [bounds]);
 
   // ------------------------------------------------------------- basemap
   useEffect(() => {
@@ -164,8 +198,16 @@ export function LeafletMap({
       }).addTo(group);
     }
     // The gateway uplink, so routes visibly terminate somewhere.
+    const isShifted = nodes.length > 0 && Math.abs(nodes[0].lat - 23.75) > 1.0;
+    const gatewayPos = isShifted && nodes.length > 0
+      ? {
+          lat: Math.min(...nodes.map((n) => n.lat)),
+          lon: Math.min(...nodes.map((n) => n.lon)) - 0.0015,
+        }
+      : GATEWAY_LATLON;
+
     for (const n of nodes.filter((x) => x.online && x.hops === 1)) {
-      L.polyline([[n.lat, n.lon], [GATEWAY_LATLON.lat, GATEWAY_LATLON.lon]], {
+      L.polyline([[n.lat, n.lon], [gatewayPos.lat, gatewayPos.lon]], {
         color: '#ffffff', weight: 1.8, opacity: 0.7, dashArray: '4 4',
         className: 'mg-link mg-link--route', interactive: false,
       }).addTo(group);

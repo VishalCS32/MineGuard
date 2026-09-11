@@ -12,18 +12,20 @@
  * standard practice in subsidence visualisation, and stating the factor on screen
  * keeps it from being read as real depth.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { panelExtent, subsidenceAt, subsidenceGrid } from '@/sim/surface';
 import { renderHeat } from './heat';
 import { stitchSatellite } from './tiles';
-import { localToWgs84 } from '@/sim/field';
+import { GATEWAY_LATLON } from '@/sim/field';
 import type { MeshLink, NodeReading } from '@/data/types';
 
 const RISK_HEX: Record<string, number> = {
   low: 0x00c14f, medium: 0xf2dc00, high: 0xff7a00, critical: 0xe80038,
 };
+
+const EARTH_RADIUS_M = 6378137;
 
 /** Terrain tessellation. Cheap because the surface sampler is separable. */
 const GRID_X = 140;
@@ -70,6 +72,35 @@ export function Scene3D({
     pointer: THREE.Vector2;
     frame: number;
   } | null>(null);
+
+  // Compute dynamic geographic centroid of the active nodes
+  const { centerLat, centerLon } = useMemo(() => {
+    if (nodes.length > 0) {
+      let minLat = Infinity;
+      let maxLat = -Infinity;
+      let minLon = Infinity;
+      let maxLon = -Infinity;
+      for (const n of nodes) {
+        if (n.lat < minLat) minLat = n.lat;
+        if (n.lat > maxLat) maxLat = n.lat;
+        if (n.lon < minLon) minLon = n.lon;
+        if (n.lon > maxLon) maxLon = n.lon;
+      }
+      return {
+        centerLat: (minLat + maxLat) / 2,
+        centerLon: (minLon + maxLon) / 2,
+      };
+    }
+    return {
+      centerLat: 28.613917,
+      centerLon: 77.208976,
+    };
+  }, [nodes]);
+
+  // Key to stabilize satellite fetches against micro-jitter (4 decimals = ~11 m)
+  const satKey = `${centerLat.toFixed(4)},${centerLon.toFixed(4)}`;
+  const lastSatKeyRef = useRef<string>('');
+  const fetchingSatRef = useRef<boolean>(false);
 
   // Props the animation loop and event handlers read without re-initialising.
   const liveRef = useRef({ nodes, links, day, exaggeration, showLinks, satellite, selectedAddr, onSelect });
@@ -158,13 +189,6 @@ export function Scene3D({
     };
     stateRef.current = state;
 
-    // Drape the satellite imagery, if the network allows.
-    const sw = localToWgs84(extent.xMin, extent.yMin);
-    const ne = localToWgs84(extent.xMax, extent.yMax);
-    stitchSatellite({ north: ne.lat, south: sw.lat, east: ne.lon, west: sw.lon })
-      .then((canvas) => { if (stateRef.current) stateRef.current.satCanvas = canvas; })
-      .catch(() => { /* offline: the shaded surface alone still reads */ });
-
     const onResize = () => {
       const w = host.clientWidth;
       const h = host.clientHeight;
@@ -226,6 +250,44 @@ export function Scene3D({
     const extent = panelExtent();
     const widthM = extent.xMax - extent.xMin;
     const depthM = extent.yMax - extent.yMin;
+    const centerPanelX = (extent.xMin + extent.xMax) / 2;
+    const centerPanelY = (extent.yMin + extent.yMax) / 2;
+
+    // --- dynamic satellite imagery draping ------------------------------
+    if (satellite && satKey !== lastSatKeyRef.current && !fetchingSatRef.current) {
+      fetchingSatRef.current = true;
+      const latSpan = (depthM / EARTH_RADIUS_M) * (180 / Math.PI);
+      const lonSpan = (widthM / (EARTH_RADIUS_M * Math.cos((centerLat * Math.PI) / 180))) * (180 / Math.PI);
+      const satBounds = {
+        north: centerLat + latSpan / 2,
+        south: centerLat - latSpan / 2,
+        east: centerLon + lonSpan / 2,
+        west: centerLon - lonSpan / 2,
+      };
+
+      stitchSatellite(satBounds)
+        .then((canvas) => {
+          fetchingSatRef.current = false;
+          if (canvas && stateRef.current) {
+            stateRef.current.satCanvas = canvas;
+            lastSatKeyRef.current = satKey;
+            // Update texture immediately with newly fetched satellite imagery
+            const currSt = stateRef.current;
+            const ctx = currSt.texCanvas.getContext('2d');
+            if (ctx) {
+              ctx.clearRect(0, 0, TEX_W, TEX_H);
+              ctx.drawImage(canvas, 0, 0, TEX_W, TEX_H);
+              ctx.globalAlpha = 0.82;
+              ctx.drawImage(currSt.heatCanvas, 0, 0, TEX_W, TEX_H);
+              ctx.globalAlpha = 1;
+              currSt.texture.needsUpdate = true;
+            }
+          }
+        })
+        .catch(() => {
+          fetchingSatRef.current = false;
+        });
+    }
 
     // --- displace the surface -------------------------------------------
     const heights = subsidenceGrid(day, GRID_X, GRID_Y, extent);
@@ -242,6 +304,17 @@ export function Scene3D({
     pos.needsUpdate = true;
     st.terrain.geometry.computeVertexNormals();
 
+    // --- heat mapping: map nodes to panel coordinates matching 3D space --
+    const heatNodes = nodes.map((n) => {
+      const dx = (n.lon - centerLon) * (Math.PI / 180) * EARTH_RADIUS_M * Math.cos((centerLat * Math.PI) / 180);
+      const dy = (n.lat - centerLat) * (Math.PI / 180) * EARTH_RADIUS_M;
+      return {
+        ...n,
+        x: centerPanelX + dx,
+        y: centerPanelY + dy,
+      };
+    });
+
     // --- texture: imagery with the risk field over it --------------------
     const ctx = st.texCanvas.getContext('2d');
     if (ctx) {
@@ -252,7 +325,7 @@ export function Scene3D({
         ctx.fillStyle = '#1d2630';
         ctx.fillRect(0, 0, TEX_W, TEX_H);
       }
-      renderHeat(st.heatCanvas, nodes, extent);
+      renderHeat(st.heatCanvas, heatNodes, extent);
       ctx.globalAlpha = 0.82;
       ctx.drawImage(st.heatCanvas, 0, 0, TEX_W, TEX_H);
       ctx.globalAlpha = 1;
@@ -263,10 +336,16 @@ export function Scene3D({
     const live = new Set<number>();
     for (const n of nodes) {
       live.add(n.addr);
-      const groundM = (-subsidenceAt(n.x, n.y, day) / 1000) * exaggeration;
-      const wx = n.x - (extent.xMin + extent.xMax) / 2;
-      // Local +y maps to world -z, so north sits at negative z.
-      const wz = -(n.y - (extent.yMin + extent.yMax) / 2);
+      // Metric displacement in meters from the terrain centroid
+      const dx = (n.lon - centerLon) * (Math.PI / 180) * EARTH_RADIUS_M * Math.cos((centerLat * Math.PI) / 180);
+      const dy = (n.lat - centerLat) * (Math.PI / 180) * EARTH_RADIUS_M;
+      const wx = dx;
+      // Local +y maps to world -z, so north sits at negative z
+      const wz = -dy;
+
+      const panelX = centerPanelX + dx;
+      const panelY = centerPanelY + dy;
+      const groundM = (-subsidenceAt(panelX, panelY, day) / 1000) * exaggeration;
       const colour = n.online ? RISK_HEX[n.risk] : 0x4b5563;
 
       let entry = st.poles.get(n.addr);
@@ -339,14 +418,46 @@ export function Scene3D({
         if (!a || !b) continue;
         const target = l.onRoute ? routePts : idlePts;
         for (const n of [a, b]) {
-          const g = (-subsidenceAt(n.x, n.y, day) / 1000) * exaggeration;
+          const dx = (n.lon - centerLon) * (Math.PI / 180) * EARTH_RADIUS_M * Math.cos((centerLat * Math.PI) / 180);
+          const dy = (n.lat - centerLat) * (Math.PI / 180) * EARTH_RADIUS_M;
+          const panelX = centerPanelX + dx;
+          const panelY = centerPanelY + dy;
+          const g = (-subsidenceAt(panelX, panelY, day) / 1000) * exaggeration;
           target.push(
-            n.x - (extent.xMin + extent.xMax) / 2,
+            dx,
             g + POLE_M,
-            -(n.y - (extent.yMin + extent.yMax) / 2),
+            -dy,
           );
         }
       }
+
+      // Gateway uplink line, mirroring 2D Leaflet map
+      const isShifted = nodes.length > 0 && Math.abs(nodes[0].lat - 23.75) > 1.0;
+      const gwLon = isShifted && nodes.length > 0
+        ? Math.min(...nodes.map((n) => n.lon)) - 0.0015
+        : GATEWAY_LATLON.lon;
+      const gwLat = isShifted && nodes.length > 0
+        ? Math.min(...nodes.map((n) => n.lat))
+        : GATEWAY_LATLON.lat;
+
+      const dxGw = (gwLon - centerLon) * (Math.PI / 180) * EARTH_RADIUS_M * Math.cos((centerLat * Math.PI) / 180);
+      const dyGw = (gwLat - centerLat) * (Math.PI / 180) * EARTH_RADIUS_M;
+      const panelXGw = centerPanelX + dxGw;
+      const panelYGw = centerPanelY + dyGw;
+      const gGw = (-subsidenceAt(panelXGw, panelYGw, day) / 1000) * exaggeration;
+
+      for (const n of nodes.filter((x) => x.online && x.hops === 1)) {
+        const dx = (n.lon - centerLon) * (Math.PI / 180) * EARTH_RADIUS_M * Math.cos((centerLat * Math.PI) / 180);
+        const dy = (n.lat - centerLat) * (Math.PI / 180) * EARTH_RADIUS_M;
+        const panelX = centerPanelX + dx;
+        const panelY = centerPanelY + dy;
+        const g = (-subsidenceAt(panelX, panelY, day) / 1000) * exaggeration;
+        routePts.push(
+          dx, g + POLE_M, -dy,
+          dxGw, gGw + POLE_M * 0.5, -dyGw,
+        );
+      }
+
       for (const [pts, opacity, width] of [
         [idlePts, 0.22, 1], [routePts, 0.8, 1],
       ] as [number[], number, number][]) {
@@ -361,7 +472,7 @@ export function Scene3D({
         ));
       }
     }
-  }, [nodes, links, day, exaggeration, showLinks, satellite, selectedAddr]);
+  }, [nodes, links, day, exaggeration, showLinks, satellite, selectedAddr, centerLat, centerLon, satKey]);
 
   return <div ref={hostRef} className="absolute inset-0 cursor-grab active:cursor-grabbing" />;
 }

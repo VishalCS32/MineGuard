@@ -11,6 +11,9 @@ interface Props {
   onRange: (r: Range) => void;
 }
 
+const secondTimeLabel = (t: number) =>
+  new Date(t).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+
 const timeLabel = (t: number) =>
   new Date(t).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
 
@@ -20,35 +23,31 @@ const dayTimeLabel = (t: number) =>
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
   });
 
-/**
- * Three stacked panels sharing one time axis, rather than the more common single
- * plot with two y-scales.
- *
- * Tilt (degrees), vibration (mg) and temperature (degC) are three different
- * quantities on three different scales. Overlaying them on a shared axis, or on
- * two axes, makes their crossings look meaningful when the alignment is entirely
- * arbitrary -- an operator would read a correlation that is not in the data. Small
- * multiples keep every series honestly on its own scale while the shared x-axis
- * still lets you read them against each other in time.
- *
- * Temperature is the third panel because it is the one confound that can
- * masquerade as ground movement: the mounting post expands, and the tilt trace
- * rises with it. The plotted tilt is already corrected for that, so the panel is
- * there to be *checked against* -- a tilt excursion that tracks the temperature
- * curve is drift the correction has not fully removed, and a tilt excursion that
- * ignores it is ground.
- */
 export function DeformationTrend({ history, range, onRange }: Props) {
-  // One sample every 15 simulated minutes, so each range is an exact sample count.
-  const windows: Record<Range, number> = { '1H': 4, '6H': 24, '24H': 96, '7D': 672 };
+  // Check whether the dataset is a live high-frequency stream (timestamps under 4 hours span)
+  const isLiveStream =
+    history.length > 1 &&
+    history[history.length - 1].t - history[0].t < 3600 * 1000 * 4;
+
+  const windows: Record<Range, number> = isLiveStream
+    ? { '1H': 30, '6H': 60, '24H': 120, '7D': 300 }
+    : { '1H': 4, '6H': 24, '24H': 96, '7D': 672 };
+
   const data = history.slice(-windows[range]);
+  const hasAnomalyScore = data.some((d) => d.anomalyScore !== undefined);
 
   const xTicks = data.length
     ? [0, 0.25, 0.5, 0.75, 1].map((f) => data[Math.round(f * (data.length - 1))].t)
     : [];
 
+  const formatX = isLiveStream
+    ? secondTimeLabel
+    : range === '7D' || range === '24H'
+    ? dayTimeLabel
+    : timeLabel;
+
   const common = {
-    formatX: range === '7D' || range === '24H' ? dayTimeLabel : timeLabel,
+    formatX,
     xTickValues: xTicks,
     padLeft: 44,
   };
@@ -114,21 +113,37 @@ export function DeformationTrend({ history, range, onRange }: Props) {
         </div>
 
         <div>
-          <div className="px-1 text-[10px] font-medium text-ink-3">Post temperature (°C)</div>
+          <div className="px-1 text-[10px] font-medium text-ink-3">
+            {hasAnomalyScore ? 'AI Anomaly Risk (%)' : 'Post temperature (°C)'}
+          </div>
           <LineChart
             {...common}
             height={76}
             yTicks={2}
             yDomain={
-              data.length
+              hasAnomalyScore
+                ? [0, 100]
+                : data.length
                 ? [Math.min(...data.map((d) => d.tempC)) - 1, Math.max(...data.map((d) => d.tempC)) + 1]
                 : [20, 35]
             }
-            unit=" °C"
+            unit={hasAnomalyScore ? ' %' : ' °C'}
             showLegend={false}
-            formatY={(v) => v.toFixed(1)}
+            formatY={(v) => v.toFixed(hasAnomalyScore ? 0 : 1)}
             series={[
-              { key: 'tempC', label: 'Post temperature', color: '#9863ff', points: data.map((d) => ({ x: d.t, y: d.tempC })) },
+              hasAnomalyScore
+                ? {
+                    key: 'anomalyScore',
+                    label: 'AI Anomaly Score',
+                    color: '#9863ff',
+                    points: data.map((d) => ({ x: d.t, y: d.anomalyScore ?? 0 })),
+                  }
+                : {
+                    key: 'tempC',
+                    label: 'Post temperature',
+                    color: '#9863ff',
+                    points: data.map((d) => ({ x: d.t, y: d.tempC })),
+                  },
             ]}
           />
         </div>

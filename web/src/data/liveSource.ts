@@ -44,6 +44,21 @@ export class LiveSource implements DataSource {
   start(): void {
     this.stopped = false;
     this.connect();
+    void this.fetchInitialSnapshot();
+  }
+
+  private async fetchInitialSnapshot(): Promise<void> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/snapshot`);
+      if (!res.ok) return;
+      const snapshot = (await res.json()) as Snapshot;
+      if (Array.isArray(snapshot?.nodes) && snapshot?.kpis) {
+        this.last = snapshot;
+        this.listeners.forEach((fn) => fn(snapshot));
+      }
+    } catch {
+      // WebSocket will deliver snapshots once connected
+    }
   }
 
   stop(): void {

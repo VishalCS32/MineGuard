@@ -1,4 +1,4 @@
-# MineGuard — web dashboard
+# MineGuard — Web Dashboard
 
 React 18 + Vite + TypeScript + Tailwind + Framer Motion. Leaflet for the 2-D map,
 Three.js for the 3-D terrain. Dark, single-mode by design.
@@ -10,18 +10,17 @@ npm run build
 npm run typecheck
 ```
 
-## Where the data comes from
+## Data Feeds & Connectivity
 
-Today the dashboard runs against `src/sim/`, a browser port of the same
-influence-function subsidence model used by `ml/simulator` and the backend. Every
-number on screen is derived rather than invented: tilt is the gradient of the
-subsidence surface, crack width follows tensile strain, hop counts come from a
-shortest-path solve over the radio graph, and alerts fire from threshold
-crossings on those values.
+The dashboard supports three seamless data feeds selectable from the header:
 
-`DataSource` in `src/sim/feed.ts` is the seam. When the FastAPI backend is up, a
-`LiveSocketSource` implements the same interface against the WebSocket and no
-component changes. The simulator then stays on as the offline demo path.
+1. **Live Node API (NODE-001)** *(Default)*:
+   - Connects in real-time to the cloud API at `https://mineguard-api.tenant.eu.org` via WebSocket (`wss://mineguard-api.tenant.eu.org/ws/NODE-001`) and REST (`/api/v1/nodes/NODE-001/latest`).
+   - Streams 1 Hz multi-sensor telemetry (LIS3DH tilt, 3-axis vibration FFT, GNSS anchor position, ML anomaly score).
+2. **Built-in Simulator**:
+   - Runs the influence-function (Knothe) subsidence model entirely in the browser. Zero backend or services required — fully functional offline.
+3. **Local Backend**:
+   - Connects to the local FastAPI backend on `http://localhost:8000` via WebSocket (`/ws/live`).
 
 The clock is compressed but internally consistent: one tick is fifteen simulated
 minutes delivered every 250 ms, and chart timestamps are simulated time — so the

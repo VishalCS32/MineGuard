@@ -7,28 +7,25 @@
  * problem statement, and a monitoring screen that goes blank when the link drops
  * is worse than useless on a mine site.
  */
+import { apiClient } from '@/api';
 import { SimulatedSource } from '@/sim/feed';
-import { LiveSource } from './liveSource';
+import { RemoteNodeSource } from './remoteNodeSource';
 import type { DataSource } from './source';
 
-const PROBE_TIMEOUT_MS = 2500;
+export type SourceMode = 'remote' | 'simulated' | 'local';
 
-export async function createSource(baseUrl = ''): Promise<DataSource> {
-  if (await backendAlive(baseUrl)) return new LiveSource(baseUrl);
+export async function createSource(
+  mode: SourceMode = 'remote',
+  baseUrl = '',
+): Promise<DataSource> {
+  if (mode === 'remote') {
+    return new RemoteNodeSource(apiClient.baseUrl, apiClient.wsUrl);
+  }
+  if (mode === 'local') {
+    const localBase = baseUrl || 'http://localhost:8000';
+    const localWs = localBase.replace(/^http/, 'ws');
+    return new RemoteNodeSource(localBase, localWs);
+  }
   return new SimulatedSource();
 }
 
-async function backendAlive(baseUrl: string): Promise<boolean> {
-  const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
-  try {
-    const res = await fetch(`${baseUrl}/api/health`, { signal: controller.signal });
-    if (!res.ok) return false;
-    const body = (await res.json()) as { status?: string };
-    return body.status === 'ok';
-  } catch {
-    return false;
-  } finally {
-    window.clearTimeout(timer);
-  }
-}

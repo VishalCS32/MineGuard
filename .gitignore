@@ -26,3 +26,6 @@ firmware/*/sdkconfig
 firmware/*/sdkconfig.old
 firmware/*/managed_components/
 firmware/*/dependencies.lock
+
+# Temporary zip archives
+mineguard-web.zip

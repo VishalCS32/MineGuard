@@ -2,37 +2,42 @@ import { useEffect, useMemo, useState } from 'react';
 import { TopBar } from '@/components/layout/TopBar';
 import { Sidebar, type NavKey } from '@/components/layout/Sidebar';
 import { Footer } from '@/components/layout/Footer';
-import { KpiRow } from '@/components/kpi/KpiRow';
-import { Card } from '@/components/ui/Card';
-import { MapPanel } from '@/components/map/MapPanel';
-import { PredictionChart } from '@/components/charts/PredictionChart';
-import { DeformationTrend, type Range } from '@/components/charts/DeformationTrend';
-import { AlertsPanel, ViewAllButton } from '@/components/alerts/AlertsPanel';
-import { ParamsPanel } from '@/components/params/ParamsPanel';
-import { SystemHealth } from '@/components/health/SystemHealth';
-import { DataFlow } from '@/components/health/DataFlow';
-import { createSource } from '@/data/createSource';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { createSource, type SourceMode } from '@/data/createSource';
+import { RemoteNodeSource } from '@/data/remoteNodeSource';
 import type { DataSource, SourceStatus } from '@/data/source';
 import type { Snapshot, TrendPoint } from '@/data/types';
+import type { Range } from '@/components/charts/DeformationTrend';
+import {
+  AlertsView,
+  AnalyticsView,
+  DashboardView,
+  HealthView,
+  HistoricalView,
+  LiveMapView,
+  NodesView,
+  PredictionView,
+  ReportsView,
+  SettingsView,
+} from '@/views';
+import { AuthProvider, useAuth } from '@/auth/AuthContext';
+import {
+  LoginView,
+  RegisterView,
+  ForgotPasswordView,
+  ResetPasswordView,
+} from '@/views/auth';
 
-/**
- * Hours until the forecast risk crosses into the High band.
- *
- * A countdown, not a red light: "tilt crosses the limit in about 14 hours" is
- * something a shift supervisor can act on, where a severity colour is not.
- */
-function hoursToThreshold(snap: Snapshot | null): number | null {
-  if (!snap) return null;
-  const forecast = snap.prediction.filter((p) => p.actual === null);
-  const hit = forecast.find((p) => p.predicted >= 0.85);
-  if (!hit) return null;
-  const now = snap.prediction.filter((p) => p.actual !== null).length - 1;
-  return Math.max(1, (hit.t - now) * 24);
-}
+type AuthViewMode = 'none' | 'login' | 'register' | 'forgot-password' | 'reset-password';
 
-export default function App() {
-  // The source is resolved asynchronously: live backend if one answers,
-  // otherwise the built-in physics model.
+function MainApp() {
+  const { user, logout, handleGoogleCallback } = useAuth();
+  const [authView, setAuthView] = useState<AuthViewMode>('none');
+  const [resetToken, setResetToken] = useState<string>('');
+
+  const [sourceMode, setSourceMode] = useState<SourceMode>(() => {
+    return (localStorage.getItem('mineguard_source_mode') as SourceMode) || 'remote';
+  });
   const [source, setSource] = useState<DataSource | null>(null);
   const [status, setStatus] = useState<SourceStatus>({ kind: 'simulated', connected: false });
   const [snap, setSnap] = useState<Snapshot | null>(null);
@@ -42,10 +47,42 @@ export default function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [clock, setClock] = useState(new Date());
 
+  // Listen for OAuth callbacks or password reset tokens in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const token = params.get('token') || params.get('reset_token');
+
+    if (code) {
+      const redirectUri = window.location.origin + window.location.pathname;
+      handleGoogleCallback(code, redirectUri)
+        .then(() => {
+          setAuthView('none');
+        })
+        .catch((err) => {
+          console.error('Google OAuth callback error:', err);
+          setAuthView('login');
+        })
+        .finally(() => {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        });
+    } else if (token) {
+      setResetToken(token);
+      setAuthView('reset-password');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [handleGoogleCallback]);
+
+  const handleModeChange = (newMode: SourceMode) => {
+    localStorage.setItem('mineguard_source_mode', newMode);
+    setSourceMode(newMode);
+    setSnap(null);
+  };
+
   useEffect(() => {
     let disposed = false;
     let created: DataSource | null = null;
-    void createSource().then((s) => {
+    void createSource(sourceMode).then((s) => {
       if (disposed) {
         s.stop();
         return;
@@ -57,7 +94,7 @@ export default function App() {
       disposed = true;
       created?.stop();
     };
-  }, []);
+  }, [sourceMode]);
 
   useEffect(() => {
     if (!source) return;
@@ -76,35 +113,122 @@ export default function App() {
     return () => window.clearInterval(id);
   }, []);
 
-  // Default the detail panels to whichever node is currently in most trouble --
-  // an operator opening the dashboard should land on the problem, not on node 1.
+  // Default detail panels to Node 01 (NODE-001) in remote API mode,
+  // or to the riskiest node in simulation mode.
   const riskiest = useMemo(() => {
     if (!snap) return null;
     const live = snap.nodes.filter((n) => n.online);
     return live.reduce<null | typeof live[number]>(
-      (best, n) => (best === null || n.riskScore > best.riskScore ? n : best), null);
+      (best, n) => (best === null || n.riskScore > best.riskScore ? n : best),
+      null,
+    );
   }, [snap]);
 
-  const selectedAddr = selected ?? riskiest?.addr ?? snap?.nodes[0]?.addr ?? 0;
+  const defaultAddr = sourceMode === 'remote' ? 16 : (riskiest?.addr ?? snap?.nodes[0]?.addr ?? 0);
+  const selectedAddr = selected ?? defaultAddr;
   const selectedNode = snap?.nodes.find((n) => n.addr === selectedAddr);
 
   useEffect(() => {
     if (snap && source) setHistory([...source.history(selectedAddr)]);
   }, [snap, selectedAddr, source]);
 
+  // Handle alert acknowledgment in real-time
+  const handleAckAlert = (alertId: string) => {
+    if (source instanceof RemoteNodeSource) {
+      source.ackAlert(alertId);
+    }
+  };
+
+  // If an authentication view is opened, render it with smooth two-way links
+  if (authView === 'login') {
+    return (
+      <LoginView
+        onNavigateDashboard={() => setAuthView('none')}
+        onSuccess={() => setAuthView('none')}
+        onNavigateRegister={() => setAuthView('register')}
+        onNavigateForgotPassword={() => setAuthView('forgot-password')}
+      />
+    );
+  }
+
+  if (authView === 'register') {
+    return (
+      <RegisterView
+        onNavigateDashboard={() => setAuthView('none')}
+        onSuccess={() => setAuthView('none')}
+        onNavigateLogin={() => setAuthView('login')}
+      />
+    );
+  }
+
+  if (authView === 'forgot-password') {
+    return (
+      <ForgotPasswordView
+        onNavigateDashboard={() => setAuthView('none')}
+        onNavigateLogin={() => setAuthView('login')}
+        onNavigateResetPassword={(tok) => {
+          if (tok) setResetToken(tok);
+          setAuthView('reset-password');
+        }}
+      />
+    );
+  }
+
+  if (authView === 'reset-password') {
+    return (
+      <ResetPasswordView
+        initialToken={resetToken}
+        onNavigateDashboard={() => setAuthView('none')}
+        onNavigateLogin={() => setAuthView('login')}
+      />
+    );
+  }
+
   if (!snap) {
     return (
-      <div className="grid h-full place-items-center text-sm text-ink-3">
-        {source ? 'Waiting for the first frame…' : 'Locating gateway…'}
+      <div className="grid h-full place-items-center bg-plane text-sm text-ink-3">
+        <LoadingState
+          message="Connecting to Node 1 Live Telemetry Stream..."
+          subMessage={
+            sourceMode === 'remote'
+              ? 'Streaming from mineguard-api.tenant.eu.org'
+              : 'Connecting to local backend service on port 8000'
+          }
+        />
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => handleModeChange('simulated')}
+            className="rounded-lg bg-surface-2 px-3 py-1.5 text-xs font-semibold text-ink-2 hover:bg-surface-3 hover:text-brand transition-colors"
+          >
+            Switch to Simulator
+          </button>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-lg bg-brand px-3 py-1.5 text-xs font-bold text-white shadow-glow transition-colors"
+          >
+            Retry Connection
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <TopBar alertCount={snap.alerts.length} status={status} />
+    <div className="flex h-full flex-col overflow-hidden bg-plane">
+      <TopBar
+        alertCount={snap.alerts.length}
+        status={status}
+        mode={sourceMode}
+        onModeChange={handleModeChange}
+        onNavigateAlerts={() => setNav('alerts')}
+        user={user}
+        onLogout={logout}
+        onOpenLogin={() => setAuthView('login')}
+      />
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <Sidebar
           active={nav}
           onSelect={setNav}
@@ -114,91 +238,98 @@ export default function App() {
           gatewayBatteryPct={snap.gatewayBatteryPct}
         />
 
-        <main className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-          <KpiRow kpis={snap.kpis} />
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
+          {nav === 'dashboard' && (
+            <DashboardView
+              snap={snap}
+              history={history}
+              range={range}
+              onRange={setRange}
+              selectedAddr={selectedAddr}
+              onSelect={setSelected}
+              onToggleNode={source?.toggleNode ? (addr) => source.toggleNode!(addr) : undefined}
+              sourceMode={sourceMode}
+              onNavigateAlerts={() => setNav('alerts')}
+            />
+          )}
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,2.05fr)_minmax(0,1fr)]">
-            {/* ------------------------------------------------ left column */}
-            <div className="flex min-h-0 flex-col gap-3">
-              <Card
-                title="Live Subsidence Map"
-                subtitle={`Jharia Panel L-7 · face at ${snap.faceX.toFixed(0)} m`}
-                className="min-h-[340px] flex-1"
-                delay={0.05}
-              >
-                <MapPanel
-                  nodes={snap.nodes}
-                  links={snap.links}
-                  day={snap.day}
-                  selectedAddr={selectedAddr}
-                  onSelect={setSelected}
-                  onToggleNode={source?.toggleNode ? (addr) => source.toggleNode!(addr) : undefined}
-                />
-              </Card>
+          {nav === 'live-map' && (
+            <LiveMapView
+              nodes={snap.nodes}
+              links={snap.links}
+              day={snap.day}
+              faceX={snap.faceX}
+              selectedAddr={selectedAddr}
+              onSelect={setSelected}
+              onToggleNode={source?.toggleNode ? (addr) => source.toggleNode!(addr) : undefined}
+            />
+          )}
 
-              <div className="grid shrink-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                <Card title="AI Prediction — Subsidence Risk" delay={0.12}>
-                  <PredictionChart
-                    data={snap.prediction}
-                    hoursToThreshold={hoursToThreshold(snap)}
-                  />
-                </Card>
+          {nav === 'nodes' && (
+            <NodesView
+              nodes={snap.nodes}
+              selectedAddr={selectedAddr}
+              onSelect={setSelected}
+            />
+          )}
 
-                <Card
-                  title="Deformation Trend"
-                  subtitle={selectedNode ? `Node ${selectedNode.id} · ${selectedNode.zone}` : ''}
-                  delay={0.16}
-                >
-                  <DeformationTrend history={history} range={range} onRange={setRange} />
-                </Card>
-              </div>
-            </div>
+          {nav === 'alerts' && (
+            <AlertsView
+              alerts={snap.alerts}
+              onAckAlert={handleAckAlert}
+            />
+          )}
 
-            {/* ----------------------------------------------- right column */}
-            <div className="flex min-h-0 flex-col gap-3">
-              <Card
-                title="Latest Alerts"
-                action={<ViewAllButton />}
-                className="min-h-[180px] flex-1"
-                delay={0.08}
-              >
-                <AlertsPanel alerts={snap.alerts} />
-              </Card>
+          {nav === 'analytics' && (
+            <AnalyticsView
+              history={history}
+              range={range}
+              onRange={setRange}
+              nodeLabel={selectedNode?.label}
+            />
+          )}
 
-              <Card
-                className="shrink-0" title="Real-Time Parameters"
-                delay={0.14}
-                action={
-                  <select
-                    value={selectedAddr}
-                    onChange={(e) => setSelected(Number(e.target.value))}
-                    className="focus-ring rounded-md border border-hairline bg-surface-2 px-2 py-1 text-[11px] text-ink"
-                    aria-label="Select node"
-                  >
-                    {snap.nodes.map((n) => (
-                      <option key={n.addr} value={n.addr}>
-                        Node {n.id}{n.online ? '' : ' (offline)'}
-                      </option>
-                    ))}
-                  </select>
-                }
-              >
-                <ParamsPanel node={selectedNode} />
-              </Card>
+          {nav === 'historical' && (
+            <HistoricalView
+              history={history}
+              nodeLabel={selectedNode?.label}
+              onRefresh={() => {
+                if (source) setHistory([...source.history(selectedAddr)]);
+              }}
+            />
+          )}
 
-              <Card className="shrink-0" title="System Health" delay={0.2}>
-                <SystemHealth kpis={snap.kpis} gatewayOnline storagePct={snap.storagePct} />
-              </Card>
+          {nav === 'prediction' && (
+            <PredictionView
+              snap={snap}
+              selectedAddr={selectedAddr}
+              onSelect={setSelected}
+            />
+          )}
 
-              <Card className="shrink-0" title="Data Flow" delay={0.24}>
-                <DataFlow />
-              </Card>
-            </div>
-          </div>
+          {nav === 'reports' && (
+            <ReportsView snap={snap} />
+          )}
+
+          {nav === 'settings' && (
+            <SettingsView nodeId={selectedNode?.label ? selectedNode.label.split(' ')[0] : 'NODE-001'} />
+          )}
+
+          {nav === 'health' && (
+            <HealthView snap={snap} />
+          )}
         </main>
       </div>
 
       <Footer />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
   );
 }

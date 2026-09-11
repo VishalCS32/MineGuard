@@ -38,6 +38,17 @@ export interface NodeReading {
   hops: number;
   rssi: number;
   batteryPct: number;
+  nodeDetail?: import('./telemetry/types').NodeDetailViewModel;
+  rawTelemetry?: import('./telemetry/types').RawNodeTelemetry;
+  rawFrame?: {
+    gyro: { x: number; y: number; z: number };
+    accel: { x: number; y: number; z: number };
+    orientation: { roll: number; pitch: number };
+    vibration: { x: number; y: number; z: number; rms: number };
+    gps: { latitude: number; longitude: number; altitude: number; satellites: number; hdop: number };
+    ml: { condition: 'normal' | 'warning' | 'critical'; anomaly: boolean; anomaly_score: number };
+    timestamp?: string;
+  };
 }
 
 export interface MeshLink {
@@ -64,6 +75,7 @@ export interface TrendPoint {
   roll: number;
   vib: number;
   tempC: number;
+  anomalyScore?: number;
 }
 
 export interface PredictionPoint {
