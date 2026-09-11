@@ -1,0 +1,4817 @@
+{
+  "nodes": [
+    {
+      "node_id": "NODE-001",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.4,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 19.0,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75,
+        "longitude": 86.42,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 0.0,
+      "y_m": 0.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-002",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.36,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 19.0,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.750135,
+        "longitude": 86.420295,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 30.0,
+      "y_m": 15.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-003",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75027,
+        "longitude": 86.420589,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 60.0,
+      "y_m": 30.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-004",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75,
+        "longitude": 86.420884,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 90.0,
+      "y_m": 0.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-005",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.750135,
+        "longitude": 86.421178,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 120.0,
+      "y_m": 15.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-006",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75027,
+        "longitude": 86.421473,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 150.0,
+      "y_m": 30.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-007",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75,
+        "longitude": 86.421767,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 180.0,
+      "y_m": 0.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-008",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.750135,
+        "longitude": 86.422062,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 210.0,
+      "y_m": 15.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-009",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75027,
+        "longitude": 86.422356,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 240.0,
+      "y_m": 30.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-010",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75,
+        "longitude": 86.422651,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 270.0,
+      "y_m": 0.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-011",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.750135,
+        "longitude": 86.422945,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 300.0,
+      "y_m": 15.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-012",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75027,
+        "longitude": 86.42324,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 330.0,
+      "y_m": 30.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-013",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75,
+        "longitude": 86.423534,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 360.0,
+      "y_m": 0.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-014",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.750135,
+        "longitude": 86.423829,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 390.0,
+      "y_m": 15.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-015",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75027,
+        "longitude": 86.424123,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 420.0,
+      "y_m": 30.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-016",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75,
+        "longitude": 86.424418,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 450.0,
+      "y_m": 0.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-017",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.750135,
+        "longitude": 86.424712,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 480.0,
+      "y_m": 15.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-018",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75027,
+        "longitude": 86.425007,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 510.0,
+      "y_m": 30.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-019",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75,
+        "longitude": 86.425301,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 540.0,
+      "y_m": 0.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-020",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.750135,
+        "longitude": 86.425596,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 570.0,
+      "y_m": 15.0,
+      "n_samples": 32
+    },
+    {
+      "node_id": "NODE-021",
+      "timestamp": "2026-09-11T12:00:00Z",
+      "orientation": {
+        "pitch": 0.05,
+        "roll": 0.01
+      },
+      "vibration": {
+        "rms_mg": 16.5,
+        "peak_hz": 28.0
+      },
+      "gps": {
+        "status": 15,
+        "latitude": 23.75027,
+        "longitude": 86.42589,
+        "altitude_m": 210.0
+      },
+      "accel": {
+        "x": 0.01,
+        "y": -0.01,
+        "z": 9.81,
+        "unit": "m/s2"
+      },
+      "gyro": {
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "temperature_c": 26.5,
+      "battery_mv": 3925.0,
+      "rssi_dbm": -72.0,
+      "snr_db": 8.5,
+      "flags": 0,
+      "x_m": 600.0,
+      "y_m": 30.0,
+      "n_samples": 32
+    }
+  ],
+  "history": {
+    "NODE-001": [
+      {
+        "node_id": "NODE-001",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.1,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 18.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.42,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 0.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-001",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.16,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 18.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.42,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 0.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-001",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.22,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 18.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.42,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 0.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-001",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.28,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 18.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.42,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 0.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-001",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.34,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 18.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.42,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 0.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-002": [
+      {
+        "node_id": "NODE-002",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.08,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 18.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.420295,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 30.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-002",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.14,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 18.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.420295,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 30.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-002",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.2,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 18.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.420295,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 30.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-002",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.26,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 18.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.420295,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 30.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-002",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.31,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 18.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.420295,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 30.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-003": [
+      {
+        "node_id": "NODE-003",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.420589,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 60.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-003",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.420589,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 60.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-003",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.420589,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 60.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-003",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.420589,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 60.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-003",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.420589,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 60.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-004": [
+      {
+        "node_id": "NODE-004",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.420884,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 90.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-004",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.420884,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 90.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-004",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.420884,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 90.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-004",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.420884,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 90.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-004",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.420884,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 90.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-005": [
+      {
+        "node_id": "NODE-005",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.421178,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 120.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-005",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.421178,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 120.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-005",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.421178,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 120.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-005",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.421178,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 120.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-005",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.421178,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 120.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-006": [
+      {
+        "node_id": "NODE-006",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.421473,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 150.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-006",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.421473,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 150.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-006",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.421473,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 150.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-006",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.421473,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 150.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-006",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.421473,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 150.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-007": [
+      {
+        "node_id": "NODE-007",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.421767,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 180.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-007",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.421767,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 180.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-007",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.421767,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 180.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-007",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.421767,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 180.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-007",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.421767,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 180.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-008": [
+      {
+        "node_id": "NODE-008",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.422062,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 210.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-008",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.422062,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 210.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-008",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.422062,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 210.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-008",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.422062,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 210.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-008",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.422062,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 210.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-009": [
+      {
+        "node_id": "NODE-009",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.422356,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 240.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-009",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.422356,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 240.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-009",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.422356,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 240.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-009",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.422356,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 240.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-009",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.422356,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 240.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-010": [
+      {
+        "node_id": "NODE-010",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.422651,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 270.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-010",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.422651,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 270.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-010",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.422651,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 270.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-010",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.422651,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 270.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-010",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.422651,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 270.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-011": [
+      {
+        "node_id": "NODE-011",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.422945,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 300.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-011",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.422945,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 300.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-011",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.422945,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 300.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-011",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.422945,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 300.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-011",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.422945,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 300.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-012": [
+      {
+        "node_id": "NODE-012",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.42324,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 330.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-012",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.42324,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 330.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-012",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.42324,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 330.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-012",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.42324,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 330.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-012",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.42324,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 330.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-013": [
+      {
+        "node_id": "NODE-013",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.423534,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 360.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-013",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.423534,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 360.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-013",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.423534,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 360.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-013",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.423534,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 360.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-013",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.423534,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 360.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-014": [
+      {
+        "node_id": "NODE-014",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.423829,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 390.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-014",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.423829,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 390.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-014",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.423829,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 390.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-014",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.423829,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 390.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-014",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.423829,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 390.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-015": [
+      {
+        "node_id": "NODE-015",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.424123,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 420.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-015",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.424123,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 420.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-015",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.424123,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 420.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-015",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.424123,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 420.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-015",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.424123,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 420.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-016": [
+      {
+        "node_id": "NODE-016",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.424418,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 450.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-016",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.424418,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 450.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-016",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.424418,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 450.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-016",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.424418,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 450.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-016",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.424418,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 450.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-017": [
+      {
+        "node_id": "NODE-017",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.424712,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 480.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-017",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.424712,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 480.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-017",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.424712,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 480.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-017",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.424712,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 480.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-017",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.424712,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 480.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-018": [
+      {
+        "node_id": "NODE-018",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.425007,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 510.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-018",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.425007,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 510.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-018",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.425007,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 510.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-018",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.425007,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 510.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-018",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.425007,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 510.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-019": [
+      {
+        "node_id": "NODE-019",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.425301,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 540.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-019",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.425301,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 540.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-019",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.425301,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 540.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-019",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.425301,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 540.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-019",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75,
+          "longitude": 86.425301,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 540.0,
+        "y_m": 0.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-020": [
+      {
+        "node_id": "NODE-020",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.425596,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 570.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-020",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.425596,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 570.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-020",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.425596,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 570.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-020",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.425596,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 570.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-020",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.750135,
+          "longitude": 86.425596,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 570.0,
+        "y_m": 15.0,
+        "n_samples": 32
+      }
+    ],
+    "NODE-021": [
+      {
+        "node_id": "NODE-021",
+        "timestamp": "2026-09-11T07:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.42589,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.0,
+        "battery_mv": 3950.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 600.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-021",
+        "timestamp": "2026-09-11T08:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.42589,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 24.5,
+        "battery_mv": 3945.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 600.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-021",
+        "timestamp": "2026-09-11T09:00:00Z",
+        "orientation": {
+          "pitch": 0.04,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.42589,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.0,
+        "battery_mv": 3940.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 600.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-021",
+        "timestamp": "2026-09-11T10:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.42589,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 25.5,
+        "battery_mv": 3935.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 600.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      },
+      {
+        "node_id": "NODE-021",
+        "timestamp": "2026-09-11T11:00:00Z",
+        "orientation": {
+          "pitch": 0.05,
+          "roll": 0.01
+        },
+        "vibration": {
+          "rms_mg": 16.0,
+          "peak_hz": 28.0
+        },
+        "gps": {
+          "status": 15,
+          "latitude": 23.75027,
+          "longitude": 86.42589,
+          "altitude_m": 210.0
+        },
+        "accel": {
+          "x": 0.01,
+          "y": -0.01,
+          "z": 9.81,
+          "unit": "m/s2"
+        },
+        "gyro": {
+          "x": null,
+          "y": null,
+          "z": null
+        },
+        "temperature_c": 26.0,
+        "battery_mv": 3930.0,
+        "rssi_dbm": -72.0,
+        "snr_db": 8.5,
+        "flags": 0,
+        "x_m": 600.0,
+        "y_m": 30.0,
+        "n_samples": 32
+      }
+    ]
+  },
+  "registered_positions": {
+    "NODE-001": {
+      "latitude": 23.75,
+      "longitude": 86.42,
+      "altitude_m": 210.0
+    },
+    "NODE-002": {
+      "latitude": 23.750135,
+      "longitude": 86.420295,
+      "altitude_m": 210.0
+    },
+    "NODE-003": {
+      "latitude": 23.75027,
+      "longitude": 86.420589,
+      "altitude_m": 210.0
+    },
+    "NODE-004": {
+      "latitude": 23.75,
+      "longitude": 86.420884,
+      "altitude_m": 210.0
+    },
+    "NODE-005": {
+      "latitude": 23.750135,
+      "longitude": 86.421178,
+      "altitude_m": 210.0
+    },
+    "NODE-006": {
+      "latitude": 23.75027,
+      "longitude": 86.421473,
+      "altitude_m": 210.0
+    },
+    "NODE-007": {
+      "latitude": 23.75,
+      "longitude": 86.421767,
+      "altitude_m": 210.0
+    },
+    "NODE-008": {
+      "latitude": 23.750135,
+      "longitude": 86.422062,
+      "altitude_m": 210.0
+    },
+    "NODE-009": {
+      "latitude": 23.75027,
+      "longitude": 86.422356,
+      "altitude_m": 210.0
+    },
+    "NODE-010": {
+      "latitude": 23.75,
+      "longitude": 86.422651,
+      "altitude_m": 210.0
+    },
+    "NODE-011": {
+      "latitude": 23.750135,
+      "longitude": 86.422945,
+      "altitude_m": 210.0
+    },
+    "NODE-012": {
+      "latitude": 23.75027,
+      "longitude": 86.42324,
+      "altitude_m": 210.0
+    },
+    "NODE-013": {
+      "latitude": 23.75,
+      "longitude": 86.423534,
+      "altitude_m": 210.0
+    },
+    "NODE-014": {
+      "latitude": 23.750135,
+      "longitude": 86.423829,
+      "altitude_m": 210.0
+    },
+    "NODE-015": {
+      "latitude": 23.75027,
+      "longitude": 86.424123,
+      "altitude_m": 210.0
+    },
+    "NODE-016": {
+      "latitude": 23.75,
+      "longitude": 86.424418,
+      "altitude_m": 210.0
+    },
+    "NODE-017": {
+      "latitude": 23.750135,
+      "longitude": 86.424712,
+      "altitude_m": 210.0
+    },
+    "NODE-018": {
+      "latitude": 23.75027,
+      "longitude": 86.425007,
+      "altitude_m": 210.0
+    },
+    "NODE-019": {
+      "latitude": 23.75,
+      "longitude": 86.425301,
+      "altitude_m": 210.0
+    },
+    "NODE-020": {
+      "latitude": 23.750135,
+      "longitude": 86.425596,
+      "altitude_m": 210.0
+    },
+    "NODE-021": {
+      "latitude": 23.75027,
+      "longitude": 86.42589,
+      "altitude_m": 210.0
+    }
+  }
+}

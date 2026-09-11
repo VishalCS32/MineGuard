@@ -1,0 +1,2160 @@
+{
+  "timestamp": "2026-09-11T12:00:00+00:00",
+  "model_version": "mineguard-anomaly-iforest-v2",
+  "overall": {
+    "status": "WARNING",
+    "severity": "WARNING",
+    "risk_level": "MEDIUM",
+    "risk_score": 0.53,
+    "alarm": true,
+    "alarm_reason": "CONFIRMED_PHYSICAL_DEFORMATION",
+    "threshold_prediction": {
+      "warning_threshold_deg": 0.5,
+      "critical_threshold_deg": 1.0,
+      "warning_hours": 1.7,
+      "critical_hours": 10.0,
+      "warning_status": "PREDICTED",
+      "critical_status": "PREDICTED"
+    }
+  },
+  "data_sufficiency": {
+    "status": "READY",
+    "required_prior_observations": 4,
+    "available_prior_observations": 5,
+    "required_history_hours": 1.0,
+    "available_history_hours": 5.0
+  },
+  "data_quality": {
+    "status": "NORMAL",
+    "out_of_distribution": false,
+    "warnings": []
+  },
+  "risk": {
+    "score": 0.530056241213683,
+    "severity": "MEDIUM",
+    "confidence": 1.0
+  },
+  "anomaly": {
+    "detected": true,
+    "score": 1.0,
+    "severity": "CRITICAL",
+    "confirmed_physical": true,
+    "evidence_status": "CONFIRMED_PHYSICAL"
+  },
+  "deformation_state": "ACCELERATING",
+  "forecast": {
+    "1": {
+      "tilt_deg": 0.4001249804748512
+    },
+    "6": {
+      "tilt_deg": 0.627503900050578
+    },
+    "12": {
+      "tilt_deg": 0.7111519299182627
+    },
+    "24": {
+      "tilt_deg": 0.7532448502154063
+    }
+  },
+  "time_to_threshold": {
+    "warning_hours": 1.7,
+    "critical_hours": 10.0,
+    "warning_status": "PREDICTED",
+    "critical_status": "PREDICTED"
+  },
+  "spatial": {
+    "affected_nodes": [],
+    "spreading": false,
+    "consistency": 1.0
+  },
+  "physics": {
+    "residual_score": null,
+    "status": "UNAVAILABLE",
+    "explanation": "Knothe expected deformation was not supplied by the backend."
+  },
+  "anti_theft": {
+    "alert": false,
+    "status": "NORMAL",
+    "affected_node_ids": [],
+    "events": [
+      {
+        "node_id": "NODE-001",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-002",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-003",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-004",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-005",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-006",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-007",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-008",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-009",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-010",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-011",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-012",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-013",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-014",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-015",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-016",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-017",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-018",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-019",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-020",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      {
+        "node_id": "NODE-021",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      }
+    ]
+  },
+  "sensor_health": {
+    "healthy_nodes": 21,
+    "suspect_nodes": [],
+    "faulty_nodes": []
+  },
+  "nodes": [
+    {
+      "node_id": "NODE-001",
+      "anti_theft": {
+        "node_id": "NODE-001",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": true,
+        "score": 1.0,
+        "severity": "CRITICAL",
+        "confirmed_physical": true,
+        "evidence_status": "CONFIRMED_PHYSICAL"
+      },
+      "deformation": {
+        "status": "CONFIRMED_PHYSICAL",
+        "tilt_deg": 0.4001,
+        "tilt_rate_deg_per_hour": 0.06,
+        "evidence": {
+          "temporal": true,
+          "spatial": true,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.7,
+        "level": "HIGH"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.4001249804748512
+        },
+        "1": {
+          "tilt_deg": 0.4001249804748512
+        },
+        "6h": {
+          "tilt_deg": 0.627503900050578
+        },
+        "6": {
+          "tilt_deg": 0.627503900050578
+        },
+        "12h": {
+          "tilt_deg": 0.7111519299182627
+        },
+        "12": {
+          "tilt_deg": 0.7111519299182627
+        },
+        "24h": {
+          "tilt_deg": 0.7532448502154063
+        },
+        "24": {
+          "tilt_deg": 0.7532448502154063
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": 1.7,
+        "critical_hours": 10.0,
+        "warning_status": "PREDICTED",
+        "critical_status": "PREDICTED"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "ANOMALY_DETECTED",
+        "TEMPORAL_PERSISTENCE",
+        "SUSTAINED_DEFORMATION_RATE",
+        "SPATIAL_CORROBORATION",
+        "CONFIRMED_PHYSICAL_DEFORMATION",
+        "TILT_THRESHOLD_APPROACH"
+      ]
+    },
+    {
+      "node_id": "NODE-002",
+      "anti_theft": {
+        "node_id": "NODE-002",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": true,
+        "score": 1.0,
+        "severity": "CRITICAL",
+        "confirmed_physical": true,
+        "evidence_status": "CONFIRMED_PHYSICAL"
+      },
+      "deformation": {
+        "status": "CONFIRMED_PHYSICAL",
+        "tilt_deg": 0.3601,
+        "tilt_rate_deg_per_hour": 0.0597,
+        "evidence": {
+          "temporal": true,
+          "spatial": true,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.68,
+        "level": "HIGH"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.3601388621073821
+        },
+        "1": {
+          "tilt_deg": 0.3601388621073821
+        },
+        "6h": {
+          "tilt_deg": 0.5866938198402609
+        },
+        "6": {
+          "tilt_deg": 0.5866938198402609
+        },
+        "12h": {
+          "tilt_deg": 0.6700387310856522
+        },
+        "12": {
+          "tilt_deg": 0.6700387310856522
+        },
+        "24h": {
+          "tilt_deg": 0.7119791176288155
+        },
+        "24": {
+          "tilt_deg": 0.7119791176288155
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": 2.3,
+        "critical_hours": 10.7,
+        "warning_status": "PREDICTED",
+        "critical_status": "PREDICTED"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "ANOMALY_DETECTED",
+        "TEMPORAL_PERSISTENCE",
+        "SUSTAINED_DEFORMATION_RATE",
+        "SPATIAL_CORROBORATION",
+        "CONFIRMED_PHYSICAL_DEFORMATION",
+        "TILT_THRESHOLD_APPROACH"
+      ]
+    },
+    {
+      "node_id": "NODE-003",
+      "anti_theft": {
+        "node_id": "NODE-003",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": true,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.211,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-004",
+      "anti_theft": {
+        "node_id": "NODE-004",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": true,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.211,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-005",
+      "anti_theft": {
+        "node_id": "NODE-005",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": true,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.211,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-006",
+      "anti_theft": {
+        "node_id": "NODE-006",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-007",
+      "anti_theft": {
+        "node_id": "NODE-007",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-008",
+      "anti_theft": {
+        "node_id": "NODE-008",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-009",
+      "anti_theft": {
+        "node_id": "NODE-009",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-010",
+      "anti_theft": {
+        "node_id": "NODE-010",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-011",
+      "anti_theft": {
+        "node_id": "NODE-011",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-012",
+      "anti_theft": {
+        "node_id": "NODE-012",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-013",
+      "anti_theft": {
+        "node_id": "NODE-013",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-014",
+      "anti_theft": {
+        "node_id": "NODE-014",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-015",
+      "anti_theft": {
+        "node_id": "NODE-015",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-016",
+      "anti_theft": {
+        "node_id": "NODE-016",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-017",
+      "anti_theft": {
+        "node_id": "NODE-017",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-018",
+      "anti_theft": {
+        "node_id": "NODE-018",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-019",
+      "anti_theft": {
+        "node_id": "NODE-019",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-020",
+      "anti_theft": {
+        "node_id": "NODE-020",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    },
+    {
+      "node_id": "NODE-021",
+      "anti_theft": {
+        "node_id": "NODE-021",
+        "status": "NORMAL",
+        "alert": false,
+        "confirmed": false,
+        "distance_from_registered_m": 0.0,
+        "threshold_m": 10.0,
+        "confirmation_count": 0,
+        "confirmation_required": 3,
+        "reason_code": "WITHIN_REGISTERED_RADIUS"
+      },
+      "health": {
+        "status": "HEALTHY",
+        "score": 1.0,
+        "confidence": 1.0,
+        "reasons": []
+      },
+      "anomaly": {
+        "detected": false,
+        "score": 0.10198039027185571,
+        "severity": "NORMAL",
+        "confirmed_physical": false,
+        "evidence_status": "NORMAL"
+      },
+      "deformation": {
+        "status": "NORMAL",
+        "tilt_deg": 0.051,
+        "tilt_rate_deg_per_hour": 0.0,
+        "evidence": {
+          "temporal": false,
+          "spatial": false,
+          "physics": false
+        }
+      },
+      "risk": {
+        "score": 0.061,
+        "level": "LOW"
+      },
+      "forecast": {
+        "1h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "1": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "6": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "12": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24h": {
+          "tilt_deg": 0.050990195135927854
+        },
+        "24": {
+          "tilt_deg": 0.050990195135927854
+        }
+      },
+      "threshold_prediction": {
+        "warning_threshold_deg": 0.5,
+        "critical_threshold_deg": 1.0,
+        "warning_hours": null,
+        "critical_hours": null,
+        "warning_status": "NOT_REACHED_IN_FORECAST",
+        "critical_status": "NOT_REACHED_IN_FORECAST"
+      },
+      "confidence": 1.0,
+      "data_sufficiency": {
+        "status": "READY",
+        "required_prior_observations": 4,
+        "available_prior_observations": 5,
+        "required_history_hours": 1.0,
+        "available_history_hours": 5.0
+      },
+      "reason_codes": [
+        "NOT_REACHED_IN_FORECAST",
+        "NO_POSITIVE_TREND"
+      ]
+    }
+  ],
+  "dominant_factors": [
+    "Tilt rate is increasing or elevated.",
+    "Persistent positive deformation detected across multiple nodes with spatial corroboration. Warning threshold estimated in 1.7 hours."
+  ],
+  "explanation": "Tilt rate is increasing or elevated. Persistent positive deformation detected across multiple nodes with spatial corroboration. Warning threshold estimated in 1.7 hours."
+}
