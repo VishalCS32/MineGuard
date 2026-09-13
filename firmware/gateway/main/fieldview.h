@@ -41,6 +41,16 @@ typedef struct {
 
     uint8_t  last_evt_code, last_evt_sev;
     uint32_t last_evt_epoch;
+
+    /* Last GNSS fix this node reported. Kept because the realtime push has to
+     * say where a reading came from, and positions arrive rarely -- a node
+     * sends one at commissioning and then only when it moves, so reading it
+     * off the most recent frame would leave the field unplaced almost all of
+     * the time. */
+    bool     have_pos;
+    int32_t  lat_e7, lon_e7;
+    int16_t  alt_m;
+    uint16_t h_acc_cm;
 } fieldview_node_t;
 
 void fieldview_init(void);
@@ -49,6 +59,9 @@ void fieldview_init(void);
 void fieldview_heard(uint16_t addr, int8_t rssi, uint8_t snr, uint8_t hops,
                      uint32_t now_ms);
 void fieldview_telemetry(uint16_t addr, const tlm_t *t);
+/* A GNSS fix from `addr`, retained until a better one arrives. */
+void fieldview_position(uint16_t addr, const pos_t *p);
+
 void fieldview_event(uint16_t addr, const evt_t *e);
 
 int  fieldview_count(void);

@@ -70,4 +70,26 @@ int sim800l_send_sms(sim800l_t *m, const char *recipients, const char *text);
  * carrying it for a message it may send twice a week. */
 esp_err_t sim800l_power(sim800l_t *m, bool on);
 
+/*
+ * Shout AT at the modem across every plausible baud rate and print whatever
+ * comes back, raw.
+ *
+ * "No modem" has several causes that look identical from the dashboard, and
+ * the one everybody reaches for -- the supply -- is only the most common, not
+ * the only one. This separates them in ten seconds instead of an evening:
+ *
+ *   nothing at any baud     TX/RX not crossed, wrong GPIOs, module unpowered,
+ *                           or the part is dead. Not a software problem.
+ *   answers at some baud    the link is fine and it was a rate mismatch. The
+ *                           SIM800L autobauds on first contact but remembers
+ *                           what it last agreed, so a module used at 115200
+ *                           by earlier firmware stays there.
+ *   garbage at every rate   framing, not content: wrong baud on both ends, or
+ *                           a supply sagging enough to corrupt the UART.
+ *
+ * Leaves the port back on the configured rate. Returns the baud that answered,
+ * or 0 if none did.
+ */
+int sim800l_probe(sim800l_t *m);
+
 #endif /* SIM800L_H */

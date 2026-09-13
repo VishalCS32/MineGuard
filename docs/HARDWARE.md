@@ -12,7 +12,7 @@ stale — fix it.
 ```
      NODE  ×21                                   GATEWAY  ×1
  ┌───────────────────────┐                 ┌────────────────────────────┐
- │  ESP32-S3 mini        │                 │  ESP32-S3 mini  (same board)│
+ │  ESP32-S3-Zero        │                 │  ESP32-S3-Zero  (same board)│
  │   ├ I2C ─ LIS3DH      │                 │   ├ SPI ─┬ E220-900M22S    │
  │   ├ GPIO ─ SW-420     │  ~865.1 MHz     │   │      └ microSD         │
  │   ├ UART ─ NEO-6M     │ ◄────mesh────►  │   ├ UART ─ SIM800L ─ SMS   │
@@ -21,7 +21,7 @@ stale — fix it.
  └───────────────────────┘                 └────────────────────────────┘
 ```
 
-**One board, two roles.** The gateway is the same ESP32-S3 mini as a node, with
+**One board, two roles.** The gateway is the same ESP32-S3-Zero as a node, with
 different modules on the same headers and a different value in NVS. One board to
 source, one board to keep as a spare, and the radio half of the wiring is
 verified twenty-one times before the gateway is ever built.
@@ -30,11 +30,41 @@ verified twenty-one times before the gateway is ever built.
 
 ## 1. Bill of materials
 
-### Per node (×21)
+### 1.1 The board — Waveshare ESP32-S3-Zero
+
+Both roles run the same board: a **Waveshare ESP32-S3-Zero** (ESP32-S3FH4R2,
+4 MB flash, 2 MB octal PSRAM, native USB, no USB-to-UART chip). Three of its
+properties decide the pin map, and none of them are obvious from a generic
+ESP32-S3 pinout:
+
+| | |
+|---|---|
+| **Only 24 GPIOs are broken out** | **IO1–IO18, IO38–IO42, IO45.** Everything the firmware drives lives in IO1–IO18 |
+| **GPIO21 is the onboard WS2812** | It is *not* brought out to a pad. It is the status indicator (§3.5) and nothing else can use it |
+| **GPIO33–37 are octal PSRAM** | Not brought out. GPIO26–32 are the SPI flash, and 19/20 are the native USB the console runs on |
+
+The consequence worth stating plainly: **GPIO21 cannot carry the GNSS load
+switch or the SIM800L PWRKEY**, which a textbook S3 pin map would put there.
+Both sit on **GPIO2** instead — broken out, not a strapping pin, and inside the
+RTC-capable range GPIO0–21 so the node can hold the GNSS gate low through deep
+sleep.
+
+Two more consequences for bring-up, both of which look like a dead board:
+
+- **To flash, hold BOOT (GPIO0) down while plugging the Type-C cable in.**
+  There is no USB-to-UART chip to pull the board into download mode for you.
+- The console is the ESP32-S3's own USB peripheral
+  (`CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y`), so the serial port disappears and
+  reappears across a reset. That is normal.
+
+A different S3 board can be substituted — the firmware needs only 18 GPIOs and
+`set led-pin` moves the indicator — but every pin number below assumes this one.
+
+### 1.2 Per node (×21)
 
 | # | Part | Spec that matters | Approx ₹ |
 |---|---|---|---|
-| 1 | ESP32-S3 mini dev board | Native USB, ≥4 MB flash, RTC GPIOs 0–21 broken out | 350 |
+| 1 | Waveshare ESP32-S3-Zero | See §1.1 — the pin map assumes this board | 350 |
 | 2 | LIS3DH breakout | ±2 g, I²C, **INT1 broken out** — the wake pin | 180 |
 | 3 | E220-900M22S + breakout | The **M** variant: LLCC68 over SPI. Not the T (UART) variant | 650 |
 | 4 | 865–867 MHz antenna + SMA pigtail | ~3 dBi whip; must be tuned for 865, not 915 or 433 | 200 |
@@ -47,11 +77,11 @@ verified twenty-one times before the gateway is ever built.
 | 11 | Capacitors 100 µF + 100 nF | At the radio's supply pins, not at the far end of a wire | 15 |
 | 12 | IP65 enclosure + gland + galvanised post | The post is a measurement component — see §6 | 500 |
 
-### Gateway (×1)
+### 1.3 Gateway (×1)
 
 | # | Part | Spec that matters | Approx ₹ |
 |---|---|---|---|
-| 1 | ESP32-S3 mini dev board | **The same board as a node.** WiFi station + access point, native USB | 350 |
+| 1 | Waveshare ESP32-S3-Zero | **The same board as a node** (§1.1). WiFi station + access point, native USB | 350 |
 | 2 | E220-900M22S + breakout + antenna | Same radio as the nodes, better sited | 850 |
 | 3 | SIM800L module | 2G, and **its own 4 V supply** — see §5 | 350 |
 | 4 | microSD module + 8 GB card | SPI, 3.3 V logic | 200 |
@@ -87,8 +117,25 @@ verified twenty-one times before the gateway is ever built.
 | DO | **GPIO5** | Second deep-sleep wake source. RTC GPIO |
 
 Set the module's potentiometer so its LED is off at rest and flickers when the
-post is tapped. Too sensitive and the node wakes on wind, spending its battery
-on nothing; too dull and it sleeps through a blast.
+post is tapped, with the module bolted down the way it will actually sit —
+sensitivity depends on the mass it is attached to. Too sensitive and the node
+wakes on wind, spending its battery on nothing; too dull and it sleeps through
+a blast.
+
+**This module is a wake source and nothing else.** `PIN_VIB_INT` appears in
+exactly two places in the firmware — the EXT1 wake mask and an
+`rtc_gpio_pulldown_en()` before sleep — and is never sampled while awake. The
+`vib_rms_mg` in telemetry comes from the **LIS3DH**, so a node with no
+accelerometer reports zero vibration however this module is wired. The two
+split the job: the switch catches the event in milliseconds and costs no
+standing current, and the accelerometer measures it once the node is up.
+
+> **Both wake pins must stay inside GPIO0–21.** EXT1 wake works only on
+> RTC-capable pins, and of the ones this board exposes (1–18, and 21 taken by
+> the pixel) every one is already assigned except GPIO3, a strapping pin.
+> GPIO38–42 and 45 are free but cannot wake the chip, so moving a wake source
+> there does not relocate it — it silently removes the node's ability to
+> respond to a blast before its next slot.
 
 ### 2.3 E220-900M22S radio — SPI2
 
@@ -119,8 +166,28 @@ TCXO, so `use_tcxo` stays false. Both are set in `llcc68_default_cfg()`.
 | TX | **GPIO18** (ESP RX) | |
 | PPS | **GPIO6** | Optional; unused by the current firmware |
 
-Power switching: **GPIO21** drives a P-MOSFET high-side switch (or a load-switch
+Power switching: **GPIO2** drives a P-MOSFET high-side switch (or a load-switch
 IC) feeding the module's VCC. The receiver is off for 99% of the node's life.
+
+> **This pin moved.** Earlier revisions of this document put the GNSS load
+> switch on GPIO21, which does not exist as a pad on the ESP32-S3-Zero (§1.1).
+> A board wired to the old map leaves the receiver permanently unpowered. If
+> you wired VCC straight to 3V3 instead of through a switch, the module runs
+> continuously — costing ~45 mA against a node budgeted for microamps, but it
+> will at least report.
+
+**Diagnosing "no fix".** `gnsstest` on the node console dumps raw bytes from
+the receiver for ten seconds and says which of the two failures you have:
+
+```
+gnsstest
+```
+
+Zero bytes means nothing is reaching the ESP32 and the sky is irrelevant —
+check that the module's TX goes to the ESP32's **RX** (the names here are from
+the ESP32's side and they cross). Sentences scrolling past with no fix means
+the link is fine and it really is the antenna, the sky, or a cold start; watch
+the satellite count in `$GPGSV` climb.
 
 ```
                  ┌─────────────┐
@@ -131,11 +198,18 @@ IC) feeding the module's VCC. The receiver is off for 99% of the node's life.
                         │
                      drain of 2N7000
                         │
-   GPIO21 ── 10k ── gate of 2N7000 ;  source to GND
+   GPIO2  ── 10k ── gate of 2N7000 ;  source to GND
 ```
 
-GPIO21 high turns the small NPN/FET on, which pulls the P-MOSFET gate down,
+GPIO2 high turns the small NPN/FET on, which pulls the P-MOSFET gate down,
 which powers the receiver. High = GNSS on, and the firmware leaves it low.
+
+**Not GPIO21**, which an S3 pinout would suggest and which earlier revisions of
+this document specified: on the ESP32-S3-Zero that pin is the onboard WS2812's
+data line and is not brought out to a pad at all (§1.1). GPIO2 is broken out,
+is not a strapping pin, and is inside the RTC-capable range GPIO0–21 — which
+matters here, because the gate level has to be held through deep sleep or the
+receiver powers itself back up the moment the ESP32 stops driving it.
 
 ### 2.5 Battery sense
 
@@ -153,27 +227,159 @@ comparable to the node's entire sleep current. Gating it costs one transistor.
 
 | Function | ESP32-S3 | Notes |
 |---|---|---|
-| Status LED | **GPIO2** | Through 330 Ω to GND |
+| Onboard RGB pixel | **GPIO21** | On the board already, and not brought out to a pad. **On by default**, reporting the radio — see §2.8 |
 | Console | USB (native) | Provisioning; see `firmware/README.md` |
 | BOOT | GPIO0 | On-board button |
 
 ### 2.7 Node pin map, at a glance
 
 ```
-        ESP32-S3 mini
+        ESP32-S3-Zero  (node role)
    GPIO1  ── battery divider gate      GPIO11 ── E220 MOSI
-   GPIO2  ── status LED                GPIO12 ── E220 SCK
+   GPIO2  ── NEO-6M power switch       GPIO12 ── E220 SCK
    GPIO4  ── LIS3DH INT1   (wake)      GPIO13 ── E220 MISO
    GPIO5  ── SW-420 DO     (wake)      GPIO14 ── E220 BUSY
    GPIO6  ── NEO-6M PPS   (optional)   GPIO15 ── E220 DIO1
    GPIO7  ── battery sense (ADC1)      GPIO16 ── E220 NRST
    GPIO8  ── LIS3DH SDA                GPIO17 ── NEO-6M RX
    GPIO9  ── LIS3DH SCL                GPIO18 ── NEO-6M TX
-   GPIO10 ── E220 NSS                  GPIO21 ── NEO-6M power switch
+   GPIO10 ── E220 NSS                  GPIO21 ── onboard RGB pixel  ★
 ```
 
-Free and deliberately so: GPIO3, 45, 46 (strapping pins), 19/20 (native USB),
-26–32 (SPI flash and PSRAM — not available on any S3 module).
+★ on the board already, not on a pad — see §1.1, and §2.8 for what it says.
+
+Free and deliberately so: GPIO3 (strapping pin), 38–42, 45. Not available at
+all on this board: 19/20 (native USB), 26–32 (SPI flash), 33–37 (octal PSRAM),
+43/44 and 46–48 (not broken out).
+
+### 2.8 Node status indicator
+
+The node carries the same WS2812 as the gateway, on the same GPIO21, and
+**lights it by default** — flags bit 5, set in the shipped defaults.
+
+The power question is worth settling, because the obvious version of the
+answer is wrong. A WS2812's controller draws ~1 mA even showing black, which
+next to a sleeping node's ~10 µA looks disqualifying. But it draws that
+whenever the pixel has power, and on a board with the pixel wired straight to
+3V3 that is *always* — awake or deep asleep, flag set or flag clear. Clearing
+bit 5 does not recover that milliamp. Only cutting the pixel's supply would,
+and this board does not expose a way to.
+
+What the flag actually costs is the light: one channel at brightness 24/255
+for 60 ms every 3 s — a couple of milliamps at 2% duty, so under 0.1 mA
+averaged, against a standing draw the board imposes either way. That is a
+rounding error, and a rounding error is a bad reason to ship nodes that cannot
+tell you why they are silent.
+
+> **Measure it on your own board before trusting the arithmetic.** If a
+> variant gates the pixel's supply, the standing milliamp *is* recoverable and
+> the trade changes completely. Sleep current with `set flags 0x0F` versus
+> `0x2F` will tell you in a minute.
+
+To turn it off — a gated board, or an installation that must stay dark:
+
+```
+set flags 0x0F        the defaults without bit 5
+save
+reboot
+```
+
+A node whose config was saved **before** this flag existed keeps its old
+flags, because NVS is restoring exactly what was written. Those boards come up
+dark and say so in the boot log, with the command to fix it. `factory` also
+does it, at the cost of the node's identity.
+
+It answers one question — **can this node reach the field?** — because that is
+the failure the dashboard cannot report. A node that cannot transmit looks
+exactly like a node nobody installed. Tilt and battery are deliberately absent:
+they arrive over the mesh and get a number next to them on a screen.
+
+| Colour | Pattern | Meaning | First thing to check |
+|---|---|---|---|
+| 🔴 red | **Continuous fast flash** | The LLCC68 never answered on SPI | NSS, BUSY, NRST, then the module's supply |
+| 🔴 red | **2 blinks** | It initialised, but transmits are not completing | The antenna, then the supply sagging under a 22 dBm transmit |
+| 🟠 amber | **3 blinks** | Transmitting, but nothing has ever been heard back | Out of range of the gateway and every relay, or the far antenna |
+| 🟠 amber | **4 blinks** | It was in the mesh and no longer is | The gateway, or a relay between here and it |
+| 🟢 green | **1 blink**, long pause | Radio up, transmitting, hearing the mesh | — |
+| 🔵 blue | **Brief flick** | A frame was just sent or heard | Nothing |
+
+Two things worth knowing before you rely on it:
+
+- **A quiet node is not a broken node.** A non-relay node may hear only the
+  gateway's `TIME_SYNC`, which is every 600 s, so "lost the mesh" needs one
+  missed sync plus margin (660 s) — not the three minutes a gateway is held to.
+  The same applies to a node that has just booted and heard *nothing yet*: its
+  first frame can legitimately be 600 s away, so it is given a full sync
+  period before it is allowed to complain. Any tighter and every healthy node
+  blinks a fault for the first several minutes of every boot, which teaches
+  whoever installed them to ignore the light.
+- **The gateway announces itself even with no clock**, once a minute, so a
+  node reports the mesh as present as soon as it is actually in range —
+  whether or not the gateway has reached NTP or a backend. Data flows the
+  same way: a node's telemetry does not wait for a clock either.
+- **3 blinks in the first ten minutes is not evidence of a bad link.** Use
+  `rftest` (§2.9) to settle it — that works without a clock, without WiFi, and
+  without the gateway having anything to say.
+- **With deep sleep on, the light only lives during the wake window** — about
+  two seconds a minute — because the LED task dies with the rest of the chip.
+  A node that is dark for fifty-eight seconds out of sixty is working as
+  designed, not broken, and the boot log says so. An always-on relay node
+  shows it continuously.
+
+The decision logic is pure and host-tested in `components/statusled`, the same
+as the gateway's.
+
+### 2.9 `rftest` — proving the link before you drive back down
+
+Every other diagnostic in this system sits downstream of a working radio link,
+so none of them can tell you the link is the problem. A node that boots,
+initialises its LLCC68 and then reports nothing looks *identical* to a node
+with a disconnected antenna, a node out of range, and a node whose gateway is
+switched off. Four jobs, one symptom, twenty-one posts before dark.
+
+`rftest` sends numbered frames and has the far end echo each one back with the
+signal strength **it** measured. It runs from either end:
+
+```
+rftest                    node -> gateway, 20 round trips, smallest frame
+rftest 0x0011             gateway -> that node
+rftest 0x0011 50 40       50 round trips carrying 40 B of filler
+```
+
+```
+  1   412 ms  us->them  -71 dBm  them->us  -74 dBm
+  2   408 ms  us->them  -72 dBm  them->us  -73 dBm
+  3   lost
+  ...
+sent 20, echoed 19, loss 5%
+  rtt      404 / 415 / 448 ms  (min/avg/max)
+  us->them -71 dBm avg, -78 dBm worst, SNR 7.5 dB
+  them->us -74 dBm avg, -80 dBm worst, SNR 6.2 dB
+  MARGINAL -- this link works today and will not survive rain or a
+  full-length frame. Move the antenna or add a relay.
+```
+
+Four things worth knowing:
+
+- **The echo carries the far end's RSSI**, which is the half of a link budget
+  a one-way test cannot see. A link that is loud outbound and deaf inbound is
+  real and common — a detuned antenna, or a receiver desensitised by its own
+  switching supply — and from the transmitting side it looks perfect. The
+  verdict is decided by the **worse** direction, never the average.
+- **`pad` grows the frame.** A link that passes a 10 B ping does not
+  necessarily pass a full-length telemetry frame: fading and marginal SNR hit
+  long frames first. Test at the size you will actually send.
+- **The bar is set for this system, not for radios in general.** A node
+  reports once a minute and an alert has to arrive first time, so anything
+  over 2% loss is reported as marginal. A link at 10% loss will drop an alert
+  within the hour.
+- **Test frames never reach the backend.** The gateway answers a ping and
+  drops it — it carries no measurement, and the system of record has no reason
+  to ever see one.
+
+Any board answers a ping whether or not a test is running on it, so
+node-to-node links can be walked as well as node-to-gateway ones — which is
+how you check a relay hop actually exists.
 
 ---
 
@@ -185,13 +391,22 @@ same pins:
 
 | Node header | On a node | On a gateway |
 |---|---|---|
-| GPIO8 | LIS3DH SDA | SIM800L STATUS (input) |
+| GPIO2 | GNSS power switch | SIM800L PWRKEY |
 | GPIO9 | LIS3DH SCL | microSD CS |
-| GPIO17 | GNSS RX | SIM800L RXD (via divider) |
-| GPIO18 | GNSS TX | SIM800L TXD |
-| GPIO21 | GNSS power switch | SIM800L PWRKEY |
-| GPIO7 | 18650 sense (2.00× divider) | 12 V rail sense (5.55× divider) |
-| GPIO4, 5 | wake inputs | unused |
+| GPIO8 | LIS3DH SDA | SIM800L RXD (ESP TX, via divider) |
+| GPIO7 | 18650 sense (2.00× divider) | SIM800L TXD (ESP RX) |
+| GPIO6 | GNSS PPS (unused) | SIM800L STATUS (input) |
+| GPIO4 | LIS3DH INT1 (wake) | 12 V rail sense (5.55× divider) |
+| GPIO5 | SW-420 DO (wake) | unused |
+| GPIO17, 18 | GNSS UART | free |
+
+The modem's UART sits on **GPIO8/7**, not the 17/18 a node uses for its GNSS,
+because 17 and 18 carry something else on the gateway hardware. Any UART routes
+to any GPIO through the S3's matrix, so the move itself is free — but it
+displaced the rail sense and the STATUS input, and the rail sense had to land
+back inside **ADC1 (GPIO1–10)** or it would stop reading whenever WiFi is up.
+GPIO4 satisfies that; `adc_oneshot_io_to_channel()` resolves the channel from
+the pin, so no driver change was needed.
 
 ### 3.1 E220-900M22S radio and microSD — one shared SPI bus (SPI2)
 
@@ -219,67 +434,132 @@ CS so neither device sees a floating select while the board boots.
 |---|---|---|
 | VCC | **4.0 V buck**, not 5 V, not 3.3 V | See §5. This is the part that goes wrong |
 | GND | Common ground, thick wire | Star from the buck, joined to the board's ground |
-| RXD | **GPIO17** through a divider | 3.3 V → 2.8 V: 1 kΩ series, 2 kΩ to GND |
-| TXD | **GPIO18** direct | 2.8 V clears the ESP32's input threshold |
-| PWRKEY | **GPIO21** via NPN or open-drain | Pulled low ≥1 s to toggle power |
-| STATUS | **GPIO8** | High once the modem is running |
+| RXD | **GPIO8** through a divider | ESP TX. 3.3 V → 2.8 V: 1 kΩ series, 2 kΩ to GND |
+| TXD | **GPIO7** direct | ESP RX. 2.8 V clears the ESP32's input threshold |
+| PWRKEY | **not wired** | The common blue breakout ties it on the module, so it starts with power. `PIN_SIM_PWRKEY` is `-1` |
+| STATUS | **not wired** | Not brought out on that breakout. `PIN_SIM_STATUS` is `-1` |
+| VDD | leave open, or use as the divider's reference | The module's own ~2.8 V logic rail, output not input. **Do not feed 3V3 into it** |
+| RESET | leave open | Active low. The driver does not use it yet — it is the only way to restart this variant in software, so wire it if you want that |
 | NET | its own antenna | Helical or wire; keep it away from the 865 MHz whip |
 
 ### 3.3 Supply sense and indicators
 
 | Function | ESP32-S3 | Notes |
 |---|---|---|
-| 12 V rail sense | **GPIO7** (ADC1_CH6) | 100 kΩ / 22 kΩ divider: 14 V → 2.52 V |
-| Status LED | **GPIO2** | Through 330 Ω to GND. Anode to the pin, cathode to ground — see §3.6 |
+| 12 V rail sense | **GPIO4** (ADC1_CH3) | 100 kΩ / 22 kΩ divider: 14 V → 2.52 V |
+| Status indicator | **GPIO21** | The RGB pixel already on the board, not brought out to a pad. Nothing to wire — see §3.5 |
 | Console | USB (native) | Provisioning, same as a node |
 
 ### 3.4 Gateway pin map, at a glance
 
 ```
-        ESP32-S3 mini  (gateway role)
-   GPIO2  ── status LED                GPIO13 ── SPI MISO  (E220 + SD)
-   GPIO7  ── 12 V rail sense (ADC1)    GPIO14 ── E220 BUSY
-   GPIO8  ── SIM800L STATUS            GPIO15 ── E220 DIO1
-   GPIO9  ── microSD CS                GPIO16 ── E220 NRST
-   GPIO10 ── E220 NSS                  GPIO17 ── SIM800L RXD (via divider)
-   GPIO11 ── SPI MOSI  (E220 + SD)     GPIO18 ── SIM800L TXD
-   GPIO12 ── SPI SCK   (E220 + SD)     GPIO21 ── SIM800L PWRKEY
+        ESP32-S3-Zero  (gateway role)
+   GPIO4  ── 12 V rail sense (ADC1)    GPIO11 ── SPI MOSI  (E220 + SD)
+   GPIO7  ── SIM800L TXD  (ESP RX)     GPIO12 ── SPI SCK   (E220 + SD)
+   GPIO8  ── SIM800L RXD  (via divider) GPIO13 ── SPI MISO  (E220 + SD)
+   GPIO9  ── microSD CS                GPIO14 ── E220 BUSY
+   GPIO10 ── E220 NSS                  GPIO15 ── E220 DIO1
+                                       GPIO16 ── E220 NRST
+                                       GPIO21 ── onboard RGB pixel  ★
+
+   Only four wires to the modem: TXD, RXD, and its own supply and ground.
+   PWRKEY and STATUS are not on this breakout, so GPIO2 and GPIO6 are free.
+
+   ★ the status indicator. On the board already, and not on a pad -- see 1.1.
 ```
 
-Free and deliberately so, on both roles: GPIO3, 45, 46 (strapping pins), 19/20
-(native USB — the provisioning console), 26–32 (SPI flash and PSRAM, not
-available on any S3 module).
+Free on the gateway: GPIO1, 2, 3, 5, 6, 17, 18, 38–42, 45. Not available at all on this board:
+19/20 (native USB — the provisioning console), 26–32 (SPI flash), 33–37 (octal
+PSRAM), 43/44 and 46–48 (not broken out). GPIO3 and 45 are strapping pins and
+are left alone even though they are exposed.
 
-### 3.5 Status LED — what the blinking means
+### 3.5 Status indicator — what the colours and blinks mean
 
-One LED on a box in the rain is a constrained display, so it answers the
-question somebody actually walks over to ask: *is this working, and if not,
-which part is broken?* It reports the **worst** thing that is true, read the way
-a car's diagnostic flash is read — N short blinks, a pause, repeat.
+The gateway uses the **RGB pixel already fitted to the ESP32-S3-Zero** — the
+WS2812 on **GPIO21**. No LED, no resistor, no pad, nothing to wire, and one
+part fewer to fail in a damp box.
 
-| Pattern | Meaning | First thing to check |
+GPIO21 is not brought out to a pad on this board; it exists only as the pixel's
+data line. That is why the SIM800L's PWRKEY and the node's GNSS load switch sit
+on GPIO2 instead — see §1.1.
+
+The nodes carry the same pixel on the same pin and leave it dark — see §2.6.
+
+The indicator answers the question somebody actually walks over to ask: *is
+this working, and if not, which part is broken?* It reports the **worst** thing
+that is true, never an average — a gateway with a dead radio and a fine
+backhaul is a dead gateway.
+
+The pixel says it in two channels at once, and both matter:
+
+- **Colour — how bad it is.** Red: not doing its job. Amber: degraded, but
+  nothing is being lost. Green: working. Blue: a frame just arrived.
+- **Blink count — which fault it is**, read the way a car's diagnostic flash
+  is read: N short blinks, a pause, repeat.
+
+Colour alone would not do. Six hues do not survive a dirty enclosure, a dim
+setting, or the roughly one man in twelve who cannot separate red from green —
+so the colour is the summary and the count is the fact. Either alone is still
+useful; together they are unambiguous.
+
+| Colour | Pattern | Meaning | First thing to check |
+|---|---|---|---|
+| 🔴 red | **Continuous fast flash** | The radio never started | E220 wiring, antenna, supply — nothing can be received |
+| 🔴 red | **2 blinks** | Radio fine, but no node heard for three minutes | The gateway's own antenna first, then the field |
+| 🟠 amber | **3 blinks** | No modem, or it has no network | The SIM800L's supply (§5), then the SIM and its antenna |
+| 🟠 amber | **4 blinks** | Not joined to any WiFi network | Join one from the web UI; frames are being spooled meanwhile |
+| 🟠 amber | **5 blinks** | WiFi up, backend not answering | The backend. Nothing is lost — frames are held |
+| 🟠 amber | **6 blinks** | The spool backlog is deep enough to start shedding | How long the outage has run |
+| 🟢 green | **1 blink**, then a long pause | Healthy: receiving from the field, delivering to the backend | — |
+| 🔵 blue | **Brief flick, any time** | A frame just arrived from a node | Nothing — this is the mesh breathing |
+
+The blue flick is the useful one day to day: standing next to the box you can
+watch the field report, one flick per frame, with no equipment at all.
+
+**Colour looks wrong?** Two different faults, and the boot sweep tells them
+apart in a second:
+
+| Sweep comes out | Meaning | Fix |
 |---|---|---|
-| **Continuous fast flash** | The radio never started | E220 wiring, antenna, supply — nothing can be received |
-| **1 blink**, then a long pause | Healthy: receiving from the field, delivering to the backend | — |
-| **2 blinks** | Radio fine, but no node heard for three minutes | The gateway's own antenna first, then the field |
-| **3 blinks** | No modem, or it has no network | The SIM800L's supply (§5), then the SIM and its antenna |
-| **4 blinks** | Not joined to any WiFi network | Join one from the web UI; frames are being spooled meanwhile |
-| **5 blinks** | WiFi up, backend not answering | The backend. Nothing is lost — frames are held |
-| **6 blinks** | The spool backlog is deep enough to start shedding | How long the outage has run |
-| **Brief flick, any time** | A frame just arrived from a node | Nothing — this is the mesh breathing |
+| red, green, blue | Byte order is right | If amber still looks green, the mix is too green for the part — see below |
+| **green, red, blue** | This pixel is RGB, not GRB. Red and green are swapped, so amber shows as yellow-green and the healthy green heartbeat shows as red | `set led-order rgb`, `save`, `reboot` |
 
-The flick is the useful one day to day: standing next to the box you can watch
-the field report, one flick per frame, with no equipment at all.
+Amber is mixed for the eye rather than for the arithmetic, and it has to be.
+A WS2812's green die puts out roughly twice the luminous intensity of its red
+at the same drive, and the eye sits near peak sensitivity at green's 525 nm
+and well down the curve at red's 625 nm. "Red plus half as much green" —
+which reads as amber written down — comes out perceptually even, which is a
+yellow-green, and at this brightness people simply call that green. The
+firmware uses a **fifth** as much green, and a host test holds it under a
+third. If your part still skews green, lower `AMBER_G` in
+`components/statusled/statusled_pattern.c`.
+
+**At boot the pixel sweeps red, green, blue** and then goes dark. That is not
+decoration. A healthy gateway's indicator is off 98% of the time, so without
+the sweep "everything is fine" and "the pixel is on a different pin" look
+identical to somebody in front of a new install. The sweep also proves the
+byte order: the driver sends GRB, so a sweep that comes out **green, red,
+blue** means this board's pixel wants RGB instead.
 
 A healthy gateway flashes for 60 ms every 3 seconds — about 2% duty — so the
 indicator is neither a drain on a solar gateway nor a nuisance at night. The
-same state is shown on the web UI as a chip with the blink count and a sentence
-explaining it, so a blink count read in the dark can be looked up on a phone
-instead of in a manual.
+same state is shown on the web UI as a chip carrying the pixel's own colour, the
+blink count and a sentence explaining it, so a count read in the dark can be
+looked up on a phone instead of in a manual.
 
-If your board's LED is wired to 3V3 through the pin rather than to ground, pass
-`true` for `active_low` in `statusled_start()` — otherwise the indicator is lit
-except when it is trying to tell you something.
+**If nothing lights up at all**, the board is not an ESP32-S3-Zero and its
+pixel is on a different GPIO. A DevKitC-1 uses 48; other variants use 47, 38
+or 8. It is not something the firmware can probe for, so it is a runtime
+setting rather than a rebuild:
+
+```
+set led-pin 48
+save
+reboot
+```
+
+`set led-pin -` returns to the board default. The GPIO the indicator actually
+came up on is reported as `led.gpio` in `/api/status`.
 
 ### 3.6 The gateway's own web UI
 
@@ -342,6 +622,11 @@ or a much larger panel, and it draws ~12 mA continuously rather than 1.9.
 
 ## 5. Gateway power — and the SIM800L problem
 
+**Before reading any of this, run `modemtest` on the gateway console.** It
+takes ten seconds and tells you which of three different faults you have,
+rather than assuming the supply — which is the most common cause but not the
+only one, and the other two are free to rule out.
+
 **Most "the SIM800L keeps rebooting" reports are power, not firmware.** During a
 2G transmit burst it pulls up to **2 A for ~600 µs**, repeating at the GSM frame
 rate. Consequences, all of them non-negotiable:
@@ -349,6 +634,11 @@ rate. Consequences, all of them non-negotiable:
 - It needs **3.4–4.4 V**. Not the 5 V rail, and not 3.3 V. A 4.0 V buck is the
   standard answer; an AMS1117 dropping 5 V to 4 V is not, because it cannot
   source 2 A and it turns the difference into heat.
+  > Many listings for the blue breakout silk-screen or label its supply pin
+  > **"VCC 5V"**. That board has no regulator on it — the pin goes straight to
+  > the module, whose absolute maximum is 4.4 V. Feeding it 5 V is how these
+  > die. Measure the pin before trusting the label; if the board genuinely has
+  > a buck on it you will see the inductor.
 - It needs **2200 µF low-ESR right at its own pins**, plus 100 nF. Bulk
   capacitance three centimetres away, past a breadboard rail, is not at its pins.
 - It needs **thick, short supply wire**. 100 mΩ of wire resistance at 2 A is a
@@ -392,8 +682,15 @@ one: ≤ radius of influence ÷ 3, about 71 m at 150 m depth, against the radio'
 
 Do this on a bench, one step at a time. Each step fails in a way you can see.
 
+0. **Flash it.** Hold **BOOT** down while plugging the Type-C cable in — the
+   ESP32-S3-Zero has no USB-to-UART chip to do that for you, and a board that
+   simply does not appear to `idf.py flash` is almost always this and not a
+   dead board (§1.1).
 1. **Power only.** No modules connected. Board enumerates over USB, console
-   prints the banner from `nodecfg_cli_start`.
+   prints the banner from `nodecfg_cli_start`, and **the onboard pixel sweeps
+   red, green, blue** on a gateway build. That sweep is the whole indicator
+   proving itself before anything else is connected — if it does not happen,
+   fix that first (§3.5), because every later step reports through it.
 2. **I²C.** Connect the LIS3DH. Boot log must contain `lis3dh: found at 0x18`
    (or 0x19). If it does not: CS not tied high, or the pull-ups are missing.
 3. **Tilt sanity.** `show`, then tip the board 90°. Pitch and roll must swing by
@@ -403,7 +700,10 @@ Do this on a bench, one step at a time. Each step fails in a way you can see.
    `llcc68: up: 866.100 MHz SF9 BW125 CR4/5 22 dBm sync 0x1424`. A `BUSY stuck
    high` message means wiring, reset, or supply — in that order of likelihood.
 5. **Two boards.** Flash a second board, `set addr 0x0011`, and watch the first
-   log received frames. This is the first moment the mesh exists.
+   log received frames. This is the first moment the mesh exists. Then run
+   `rftest` from one of them (§2.9): on a bench at a metre it should report 0%
+   loss and a strong SNR both ways, and anything less means a problem you want
+   to find now rather than on a hillside.
 6. **GNSS.** Outdoors, sky view. First fix from cold takes 30–60 s; the log
    prints position, satellite count and an accuracy estimate.
 7. **Gateway.** Swap the node's modules for the microSD card and the modem (§3),
@@ -428,8 +728,19 @@ Do this on a bench, one step at a time. Each step fails in a way you can see.
 | `lis3dh: not responding at 0x18 or 0x19` | CS not tied high · SDA/SCL swapped · no pull-ups |
 | Tilt drifts several hundred mdeg over a day | Normal — thermal expansion of the post. The backend subtracts it using the die temperature in every frame |
 | Node reports, then vanishes for hours | Deep sleep with no clock: it never got a TIME_SYNC. Check the gateway is broadcasting |
-| GNSS never fixes | Antenna indoors · TX/RX not crossed · module browning out on a shared 3V3 |
+| GNSS never fixes, `0 sats seen` | Run `gnsstest` on the node. **0 bytes = wiring, not sky** — TX/RX not crossed, a broken lead, or the module unpowered. Sentences arriving but no fix = antenna, sky, or a cold start. §2.4 |
+| GNSS LED blinks but the node reports no fix | The LED is on the PPS pin and only pulses **after** a fix, so the receiver is working and the ESP32 is not hearing it. That is the wiring case above |
 | Modem resets during `AT+CMGS` | Supply. See §5. It is essentially always the supply |
+| Dashboard says "no modem" | Run `modemtest` on the gateway console. It shouts AT across every plausible baud rate and prints the raw reply: **nothing at any rate** is wiring or supply, **an answer at the wrong rate** is a baud mismatch (`AT+IPR`), **garbage everywhere** is framing — a sagging supply or both ends disagreeing |
 | `mineguard-gw-01` AP not visible | The AP password is under 8 characters, so the firmware refused to start an open network — `set ap-pass <8+ chars>` |
 | Frames arrive with `hops` climbing every cycle | Relays are asleep at the wrong moment — the field's clocks have drifted apart. Shorten `TIME_SYNC_INTERVAL_S` |
 | SD card not found | 3.3 V logic only · CS pull-up missing · card formatted exFAT (use FAT32) |
+| A node's RGB pixel stays dark | Between wake windows this is normal on a deep-sleeping node (§2.8). If it never lights: a config saved before bit 5 existed is being restored from NVS — the boot log prints the exact `set flags` command to fix it |
+| Node stuck on `[NO CLOCK]` for minutes with the gateway clearly up | Fixed: the gateway now sends `TIME_SYNC` the instant a node reports epoch 0, instead of waiting for the 600 s broadcast. A clockless node runs its GNSS every cycle and listens only half the time, so it could lose that coin flip for many minutes |
+| `uplink failed` / `ESP_ERR_HTTP_CONNECT` while WiFi is up | `set api` points somewhere the gateway's own network cannot reach — compare the URL against the `sta ip` in the boot log. Radio and SMS are unaffected; frames spool until it returns |
+| Node reports nothing and you cannot tell why | `rftest` from the node, then `rftest <addr>` from the gateway. Loss and both-direction RSSI separate "dead radio" from "dead antenna" from "out of range" (§2.9) |
+| Amber shows as green, or the green heartbeat shows as red | Byte order. If the boot sweep comes out green/red/blue this part is RGB: `set led-order rgb`, `save`, `reboot`. If the sweep is correct, it is the colour mix — §3.5 |
+| The gateway's RGB pixel never lights, not even the boot sweep | On an ESP32-S3-Zero the pixel is GPIO21 and that is the default. On any other board: `set led-pin 48` (or 47, 38, 8), `save`, `reboot`. §3.5 |
+| The board does not appear when flashing | Hold **BOOT** while plugging the cable in. There is no USB-to-UART chip to enter download mode for you (§1.1) |
+| The serial port vanishes on every reset | Normal. The console is the S3's own USB peripheral, so the port goes with the chip |
+| The boot sweep comes out green, red, blue | This pixel wants RGB, not the GRB the driver sends. Swap `c.g` and `c.r` in `pixel()`, `components/statusled/statusled.c` |

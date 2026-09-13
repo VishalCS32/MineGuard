@@ -62,6 +62,16 @@ typedef struct {
     char        site_slug[NODECFG_LABEL_LEN];
     char        gateway_id[NODECFG_LABEL_LEN];
     char        sms_recipients[NODECFG_STR_LEN];  /* comma-separated E.164   */
+    /* Which GPIO the onboard RGB pixel is on. 0 means "the board default",
+     * PIN_RGB_LED. It is here rather than only in board_pins.h because the
+     * pin genuinely differs between otherwise identical S3 mini boards and
+     * cannot be probed for -- and a spare gateway that needs a rebuild to
+     * show its status is a spare gateway nobody swaps in at night. */
+    uint8_t     led_gpio;
+    /* 0 = GRB, the near-universal WS2812 order; 1 = RGB, for the parts that
+     * are not. Wrong order swaps red and green, which is worse than a dark
+     * pixel: the indicator confidently reports the wrong severity. */
+    uint8_t     led_order_rgb;
 } nodecfg_t;
 
 /* Load from NVS, filling anything unset with defaults. Never fails: a board with
@@ -109,10 +119,47 @@ void nodecfg_print(const nodecfg_t *cfg);
  *   set push https://host/hook gateway only; realtime JSON push, '-' clears
  *   set site jharia
  *   set sms +911234567890,+919876543210
+ *   set led-pin 21            gateway only; onboard RGB pixel, '-' = default
+ *   set led-order grb|rgb     byte order, if red and green come out swapped
+ *   rftest [dst] [n] [pad]    RF link test -- see components/rftest
+ *   gnsstest [seconds]        raw NMEA from the receiver; node only
+ *   modemtest                 AT across every baud rate; gateway only
  *   save                      commit to NVS
  *   reboot
  *   factory                   wipe and reboot
  */
-void nodecfg_cli_start(nodecfg_t *cfg);
+/*
+ * What the console can ask the application to do. The console lives in a
+ * component and the radio lives in the application, so anything that has to
+ * touch hardware arrives as a hook rather than as a dependency pointing the
+ * wrong way.
+ */
+typedef struct {
+    /*
+     * Run an RF link test against `dst` and print the result. Blocking: it
+     * runs on the console task, for as long as `count` round trips take.
+     * Returns false if it could not run at all -- no radio.
+     */
+    bool (*rftest)(uint16_t dst, uint16_t count, uint8_t pad);
+
+    /*
+     * Dump raw GNSS bytes for `seconds`, to separate "nothing on the wire"
+     * from "no fix yet" -- the two look identical from the outside and only
+     * one of them is about the sky. Node only; NULL on a gateway.
+     */
+    bool (*gnsstest)(uint32_t seconds);
+
+    /*
+     * Sweep AT across the plausible baud rates and print what comes back, to
+     * separate a dead link from a rate mismatch from a dead part. Gateway
+     * only; NULL on a node.
+     */
+    bool (*modemtest)(void);
+} nodecfg_hooks_t;
+
+/* `hooks` may be NULL, and any member of it may be NULL: the console then
+ * says the command is unavailable rather than crashing on a boot path where
+ * the radio never came up. */
+void nodecfg_cli_start(nodecfg_t *cfg, const nodecfg_hooks_t *hooks);
 
 #endif /* NODECFG_H */

@@ -15,5 +15,6 @@
     "ESP_ROM_ELF_DIR": "/home/vishal/.espressif/tools/esp-rom-elfs/20241011/",
     "IDF_CCACHE_ENABLE": "1"
   },
-  "idf.currentSetup": "/home/vishal/.espressif/v6.1/esp-idf"
+  "idf.currentSetup": "/home/vishal/.espressif/v6.1/esp-idf",
+  "idf.port": "/dev/ttyACM0"
 }

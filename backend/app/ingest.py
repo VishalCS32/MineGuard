@@ -158,9 +158,36 @@ async def _node_for(session: AsyncSession, site_id: int, addr: int, auto_provisi
     )).mappings().first()
 
 
+# A timestamp before this is not a timestamp. It matches the guard the node
+# firmware applies to an inbound TIME_SYNC, so both ends agree on what counts
+# as a real clock reading.
+_CLOCK_EPOCH_FLOOR = 1735689600  # 2025-01-01T00:00:00Z
+
+
+def _stamp(t_epoch: int) -> datetime:
+    """When a frame happened -- its own clock if it has one, else arrival.
+
+    A node stamps epoch 0 when it has never received a TIME_SYNC: a one-way
+    radio link, or simply a node that has been up for less than one sync
+    interval. Taking that literally files the measurement in 1970, where it is
+    invisible to every query, every chart and every baseline -- the reading is
+    not merely mis-timed, it is silently gone.
+
+    Arrival time is a good substitute and its error is bounded by something
+    small: a node transmits within a second or two of sampling, and the
+    gateway forwards or spools immediately. The exception is a frame that sat
+    in the spool through a long backhaul outage, which lands late -- so the
+    substitution is only ever a fallback, never applied to a node that told us
+    what time it was.
+    """
+    if t_epoch < _CLOCK_EPOCH_FLOOR:
+        return datetime.now(tz=timezone.utc)
+    return datetime.fromtimestamp(t_epoch, tz=timezone.utc)
+
+
 async def _telemetry(session: AsyncSession, settings: Settings, site, node,
                      header: Header, tlm: Telemetry, result: IngestResult) -> None:
-    when = datetime.fromtimestamp(tlm.t_epoch, tz=timezone.utc)
+    when = _stamp(tlm.t_epoch)
     thresholds = _thresholds(settings)
 
     # A node with no baseline yet is baselined *by this frame*, so its tilt is
@@ -227,7 +254,7 @@ async def _telemetry(session: AsyncSession, settings: Settings, site, node,
 async def _event(session: AsyncSession, site, node, evt: Event,
                  result: IngestResult) -> None:
     """A node-side threshold breach, sent immediately rather than at duty cycle."""
-    when = datetime.fromtimestamp(evt.t_epoch, tz=timezone.utc)
+    when = _stamp(evt.t_epoch)
     await session.execute(events_t.insert().values(
         time=when, node_id=node["id"], event_code=int(evt.event_code),
         severity=int(evt.severity), value=evt.value, threshold=evt.threshold,
@@ -260,7 +287,7 @@ async def _config_ack(session: AsyncSession, node, ack: ConfigAck) -> None:
 
 async def _neighbors(session: AsyncSession, site, header: Header,
                      report: NeighborReport) -> None:
-    when = datetime.fromtimestamp(report.t_epoch, tz=timezone.utc)
+    when = _stamp(report.t_epoch)
     for n in report.neighbors:
         await session.execute(mesh_links.insert().values(
             time=when, site_id=site["id"], src_addr=header.src, dst_addr=n.addr,
@@ -318,7 +345,7 @@ async def _position(session: AsyncSession, site, node, pos: Position,
         log.debug("ignoring unusable GNSS fix from 0x%04X", node["addr"])
         return
 
-    when = datetime.fromtimestamp(pos.t_epoch, tz=timezone.utc)
+    when = _stamp(pos.t_epoch)
     known_lat, known_lon = node["lat"], node["lon"]
 
     if known_lat is None or known_lon is None:

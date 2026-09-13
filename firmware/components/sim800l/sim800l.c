@@ -52,6 +52,71 @@ static bool at(sim800l_t *m, const char *cmd, const char *want,
     return wait_for(m, want ? want : "OK", timeout_ms, out, cap);
 }
 
+int sim800l_probe(sim800l_t *m)
+{
+    /* 9600 first because it is what the driver runs at and what the part
+     * ships as; the rest are the rates a module is most often left on. */
+    static const int rates[] = { 9600, 115200, 57600, 38400, 19200, 4800 };
+    int answered = 0;
+    size_t total = 0;
+
+    for (size_t i = 0; i < sizeof(rates) / sizeof(rates[0]); i++) {
+        uart_set_baudrate(m->cfg.uart, rates[i]);
+        vTaskDelay(pdMS_TO_TICKS(50));
+        uart_flush_input(m->cfg.uart);
+
+        /* Plain AT twice: the first often only wakes the autobauder. */
+        for (int a = 0; a < 2; a++) {
+            uart_write_bytes(m->cfg.uart, "AT\r\n", 4);
+            vTaskDelay(pdMS_TO_TICKS(400));
+        }
+
+        char buf[256];
+        int n = uart_read_bytes(m->cfg.uart, (uint8_t *)buf, sizeof(buf) - 1,
+                                pdMS_TO_TICKS(300));
+        if (n < 0) n = 0;
+        buf[n] = '\0';
+        total += (size_t)n;
+
+        printf("  %6d baud: %d bytes", rates[i], n);
+        if (n) {
+            printf("  [");
+            for (int k = 0; k < n; k++)
+                putchar((buf[k] >= 0x20 && buf[k] < 0x7F) ? buf[k]
+                        : (buf[k] == '\r' || buf[k] == '\n') ? ' ' : '.');
+            printf("]");
+        }
+        printf("\n");
+
+        if (n && strstr(buf, "OK")) {
+            printf("  -> the modem answered at %d baud.\n", rates[i]);
+            answered = rates[i];
+            break;
+        }
+    }
+
+    uart_set_baudrate(m->cfg.uart, m->cfg.baud ? m->cfg.baud : 9600);
+
+    if (answered && answered != (m->cfg.baud ? m->cfg.baud : 9600)) {
+        printf("  The link is fine -- it is a baud mismatch. The driver opens\n"
+               "  the port at %d. Send AT+IPR=%d from a terminal to move the\n"
+               "  modem, or change the rate in the gateway's sim800l_cfg_t.\n",
+               m->cfg.baud ? m->cfg.baud : 9600, m->cfg.baud ? m->cfg.baud : 9600);
+    } else if (!answered && total == 0) {
+        printf("  NOTHING came back at any rate. This is not the baud and it\n"
+               "  is not the firmware. In order: the module's TXD goes to the\n"
+               "  ESP32's RX and its RXD to the ESP32's TX -- they cross, and\n"
+               "  the pin names here are from the ESP32's side. Then the\n"
+               "  supply: 3.4-4.4 V, 2 A bursts, 2200 uF at the module's own\n"
+               "  pins. A board fed 5 V may be dead and still look intact.\n");
+    } else if (!answered) {
+        printf("  Bytes came back but no OK -- framing, not content. Both ends\n"
+               "  disagree about the rate, or the supply is sagging enough to\n"
+               "  corrupt the UART mid-byte.\n");
+    }
+    return answered;
+}
+
 esp_err_t sim800l_power(sim800l_t *m, bool on)
 {
     if (m->cfg.pwrkey == GPIO_NUM_NC) return ESP_OK;
@@ -109,7 +174,15 @@ esp_err_t sim800l_init(sim800l_t *m, const sim800l_cfg_t *cfg)
      * just been given power needs a few seconds before it answers anything. */
     for (int attempt = 0; attempt < 3; attempt++) {
         if (at(m, "AT", "OK", 1000, NULL, 0)) { m->ready = true; break; }
-        ESP_LOGW(TAG, "no answer to AT (attempt %d); toggling PWRKEY", attempt + 1);
+        /* Say what is actually being tried. Reporting a PWRKEY toggle on a
+         * board whose PWRKEY is tied on the module sends whoever reads this
+         * looking for a wiring fault in the one place there is no wire. */
+        if (m->cfg.pwrkey != GPIO_NUM_NC)
+            ESP_LOGW(TAG, "no answer to AT (attempt %d); toggling PWRKEY", attempt + 1);
+        else
+            ESP_LOGW(TAG, "no answer to AT (attempt %d); no PWRKEY wired, so the "
+                          "module cannot be restarted from here -- retrying",
+                     attempt + 1);
         sim800l_power(m, true);
     }
     if (!m->ready) {

@@ -127,10 +127,16 @@ because there is no auto-reset circuit on the native USB port. `idf.py
 erase-flash` clears a board completely, including the NVS that holds its
 identity — after that it comes up unprovisioned with a MAC-derived address.
 
-Both applications target the **same board**, an ESP32-S3 mini. What makes one a
-gateway is the modules on its headers and `set role gateway` in NVS — one board
-to source, one board to keep as a spare, and the radio half of the wiring
-verified twenty-one times before the gateway is built.
+Both applications target the **same board**, a Waveshare **ESP32-S3-Zero**.
+What makes one a gateway is the modules on its headers and `set role gateway`
+in NVS — one board to source, one board to keep as a spare, and the radio half
+of the wiring verified twenty-one times before the gateway is built.
+
+Two of that board's quirks are load-bearing, and both are in `board_pins.h`
+with the reasoning attached: **GPIO21 is the onboard WS2812 and is not brought
+out to a pad**, so the GNSS load switch and the SIM800L's PWRKEY live on GPIO2;
+and there is **no USB-to-UART chip**, so flashing means holding BOOT down while
+the cable goes in. See `docs/HARDWARE.md` §1.1.
 
 `sdkconfig.defaults` is checked in for both, so every board is built the same
 way. A node that behaves differently because of somebody's local menuconfig is a
@@ -155,7 +161,13 @@ set rate-alert 150            the tilt RATE trigger -- the precursor
 set tilt-alert 2000           absolute tilt, mdeg
 set vib-alert 500             mg
 set tx-power 22               dBm
-set flags 0x0F                bit0 relay, bit1 gnss, bit2 vib, bit3 deep-sleep
+set flags 0x2F                bit0 relay, bit1 gnss, bit2 vib, bit3 deep-sleep,
+                              bit4 recalibrate (one-shot), bit5 status LED.
+                              0x2F is the default: everything but recalibrate
+rftest [dst] [n] [pad]        RF link test -- loss, RTT and the signal BOTH
+                              ends measured. See docs/HARDWARE.md 2.9
+gnsstest [seconds]            raw NMEA off the receiver (node)
+modemtest                     AT across every baud rate (gateway)
 set offsets <pitch> <roll>    tilt zero, mdeg
 save
 reboot
@@ -172,6 +184,8 @@ set gw-id gw-01
 set sms  +919876543210,+911234567890
 set ap-pass <8+ chars>        guards the on-site web UI -- change it
 set push https://host/hook    optional realtime JSON feed; '-' clears it
+set led-pin 48                only if the onboard RGB pixel is not on GPIO21
+set led-order rgb             only if the boot sweep comes out green/red/blue
 save
 ```
 
@@ -227,15 +241,34 @@ In this order, and the order is the design:
 3. **Uplink when possible.** Batches of up to 64 frames, over MQTT when a broker
    is configured and HTTP otherwise, retried until they land. Nothing is removed
    from the spool until the backend has taken it.
-4. **Say so, out loud.** One status LED reports the worst thing that is true —
-   continuous flash for a dead radio, then 2–6 blinks for a silent field, a
-   missing modem, no WiFi, an unreachable backend or a deep spool, and a single
-   heartbeat when all is well. Every received frame produces a brief flick, so
-   the mesh can be watched breathing without any equipment. The decision logic
-   is pure and host-tested (`components/statusled`); the legend is in
-   `docs/HARDWARE.md` §3.5 and on the web UI.
+4. **Say so, out loud.** The board's own RGB pixel — the WS2812 already fitted
+   to the board on GPIO21, no LED to wire — reports the worst thing that is
+   true, in two channels at once. **Colour** says how bad it is: red for a
+   gateway that is not doing its job, amber for degraded but losing nothing,
+   green for working, blue for a frame that just arrived. **Blink count** says
+   which fault: a continuous red flash for a dead radio, then 2–6 blinks for a
+   silent field, a missing modem, no WiFi, an unreachable backend or a deep
+   spool, and a single green heartbeat when all is well. Every received frame
+   produces a brief blue flick, so the mesh can be watched breathing without
+   any equipment, and a red/green/blue sweep at boot tells an installer the
+   pixel works before the gateway has anything to say. The decision logic is
+   pure and host-tested (`components/statusled`); the legend is in
+   `docs/HARDWARE.md` §3.5 and on the web UI, which shows the pixel's own
+   colour next to the count.
+
+   A **node** has the same pixel and lights it too, by default, answering the
+   one question a dashboard cannot — *can this node reach the field?* — since
+   a node that cannot transmit looks exactly like a node nobody installed. It
+   is nearly free: the pixel's ~1 mA standing draw is there whether or not the
+   firmware ever writes to it, so the flag costs only the light itself, under
+   0.1 mA averaged. `set flags` bit 5 turns it off. Legend in
+   `docs/HARDWARE.md` §2.8.
 5. **Carry the clock and control back down.** `TIME_SYNC` to the whole field
-   every ten minutes; `CONFIG_SET` to individual nodes.
+   every ten minutes; `CONFIG_SET` to individual nodes. With no clock of its
+   own yet the gateway still broadcasts, once a minute, carrying epoch 0 — a
+   presence beacon. Connectivity must not depend on NTP: without it a gateway
+   waiting for the network transmits nothing at all, and a node with a
+   flawless link cannot tell that from a disconnected antenna.
 
 Downlink timing is the subtle part. Nodes are awake about two seconds a minute,
 so a config transmitted at an arbitrary moment reaches nobody. The gateway holds

@@ -217,7 +217,12 @@ class ConfigPush(BaseModel):
     tilt_rate_alert_mdeg_h: int = Field(150, ge=1, le=60000)
     tilt_offset_pitch: int = Field(0, ge=-32768, le=32767)
     tilt_offset_roll: int = Field(0, ge=-32768, le=32767)
-    flags: int = Field(15, ge=0, le=255)
+    # Must track defaults() in firmware/components/nodecfg/nodecfg.c and
+    # Config.flags in subnet_proto: a push that omits `flags` sends this value
+    # verbatim, so a bit missing here silently turns that feature off on every
+    # node the dashboard reconfigures. 0x2F = relay | gnss | vib | deep-sleep
+    # | status LED.
+    flags: int = Field(0x2F, ge=0, le=255)
     created_by: str = "operator"
 
 

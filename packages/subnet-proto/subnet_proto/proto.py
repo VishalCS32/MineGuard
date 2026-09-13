@@ -36,6 +36,12 @@ class MsgType(IntEnum):
     NEIGHBOR = 0x5
     TIME_SYNC = 0x6
     POSITION = 0x7
+    # Bench and commissioning only. The gateway answers a ping and drops it,
+    # so these never reach the backend -- they are here so a frame captured
+    # off the air can still be decoded by the tools, and so the C and Python
+    # sides cannot disagree about which type numbers are taken.
+    RF_PING = 0x8
+    RF_PONG = 0x9
 
 
 class EventCode(IntEnum):
@@ -75,6 +81,7 @@ CFG_GNSS_ENABLED = 1 << 1
 CFG_VIB_ENABLED = 1 << 2
 CFG_DEEP_SLEEP = 1 << 3
 CFG_RECALIBRATE = 1 << 4
+CFG_LED_ENABLED = 1 << 5
 
 # GNSS fix quality, packed into the low 2 bits of ``gnss_status``.
 GNSS_NO_FIX = 0
@@ -303,7 +310,11 @@ class Config(Payload):
     tilt_rate_alert_mdeg_h: int = 150
     tilt_offset_pitch: int = 0
     tilt_offset_roll: int = 0
-    flags: int = CFG_RELAY_ENABLED | CFG_GNSS_ENABLED | CFG_VIB_ENABLED | CFG_DEEP_SLEEP
+    # Matches defaults() in firmware/components/nodecfg/nodecfg.c. It has to:
+    # a CONFIG_SET built from these defaults is pushed verbatim to a node, so
+    # a bit missing here silently turns that feature off in the field.
+    flags: int = (CFG_RELAY_ENABLED | CFG_GNSS_ENABLED | CFG_VIB_ENABLED
+                  | CFG_DEEP_SLEEP | CFG_LED_ENABLED)
     cfg_hash: int = 0
 
     def _body(self) -> bytes:
@@ -488,6 +499,46 @@ class Position(Payload):
         return self.gnss_fix >= GNSS_FIX_3D and self.h_acc_cm > 0
 
 
+@dataclass(slots=True)
+class RfTest(Payload):
+    """A link test ping, or the echo of one.
+
+    Not telemetry and never stored: it exists so somebody commissioning a post
+    can find out whether this radio moves bytes to that radio before driving
+    back down the hill. The echo carries the RSSI and SNR the *echoer*
+    measured, which is the half of a link budget a one-way test cannot see --
+    a link that is loud outbound and deaf inbound looks perfect from the
+    transmitting side alone.
+
+    ``pad`` is filler, not data. A link that passes a 10 B frame does not
+    necessarily pass a full-length one: fading and marginal SNR hit long
+    frames first.
+    """
+
+    _S: ClassVar[struct.Struct] = struct.Struct("<IIbb")
+    MSG_TYPE: ClassVar[MsgType] = MsgType.RF_PING
+
+    seq: int
+    t_ms: int = 0             # sender's clock, echoed back -> round-trip time
+    rssi_dbm: int = 0         # echo: what the far end heard. ping: 0
+    snr_x4: int = 0           # quarter-dB
+    pad: bytes = b""
+
+    def pack(self) -> bytes:
+        return self._S.pack(self.seq, self.t_ms, self.rssi_dbm, self.snr_x4) + self.pad
+
+    @classmethod
+    def unpack(cls, b: bytes) -> "RfTest":
+        if len(b) < cls._S.size:
+            raise ProtocolError(f"rf test payload is {len(b)} B, expected at least {cls._S.size} B")
+        seq, t_ms, rssi, snr = cls._S.unpack(b[: cls._S.size])
+        return cls(seq, t_ms, rssi, snr, bytes(b[cls._S.size :]))
+
+    @property
+    def snr_db(self) -> float:
+        return self.snr_x4 / 4.0
+
+
 _DECODERS: dict[MsgType, type] = {
     MsgType.TELEMETRY: Telemetry,
     MsgType.EVENT: Event,
@@ -496,6 +547,8 @@ _DECODERS: dict[MsgType, type] = {
     MsgType.NEIGHBOR: NeighborReport,
     MsgType.TIME_SYNC: TimeSync,
     MsgType.POSITION: Position,
+    MsgType.RF_PING: RfTest,
+    MsgType.RF_PONG: RfTest,
 }
 
 

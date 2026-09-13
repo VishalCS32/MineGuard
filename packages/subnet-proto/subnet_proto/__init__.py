@@ -10,14 +10,15 @@ checked byte-for-byte against this module by ``tests/test_proto.py``.
 
 from .proto import (  # noqa: F401
     ADDR_BROADCAST, ADDR_GATEWAY, ADDR_UNASSIGNED,
-    CFG_DEEP_SLEEP, CFG_GNSS_ENABLED, CFG_RECALIBRATE, CFG_RELAY_ENABLED, CFG_VIB_ENABLED,
+    CFG_DEEP_SLEEP, CFG_GNSS_ENABLED, CFG_LED_ENABLED, CFG_RECALIBRATE,
+    CFG_RELAY_ENABLED, CFG_VIB_ENABLED,
     DEFAULT_TTL, GNSS_FIX_2D, GNSS_FIX_3D, GNSS_FIX_DGPS, GNSS_NO_FIX,
     HDR_LEN, MAGIC, MAX_NEIGHBORS, MAX_PAYLOAD, PROTO_VER,
     TLM_GNSS_FAULT, TLM_LOW_BATTERY, TLM_RELAYED, TLM_TILT_FAULT, TLM_UNCALIBRATED,
     TLM_VIB_FAULT,
     CfgStatus, Config, ConfigAck, Event, EventCode, Header, MsgType, Neighbor,
-    NeighborReport, Payload, Position, ProtocolError, Severity, Telemetry,
-    TimeSync,
+    NeighborReport, Payload, Position, ProtocolError, RfTest, Severity,
+    Telemetry, TimeSync,
     crc16, decode, pack_gnss_status,
 )
 

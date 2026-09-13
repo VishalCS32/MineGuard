@@ -51,4 +51,16 @@ cJSON *report_nodes(void);
  */
 char *report_push_document(void);
 
+/*
+ * One node's readings, in the shape the upstream telemetry API accepts.
+ *
+ * Per node rather than per gateway, because the schema is built around a
+ * single `node_id` -- so a push cycle emits one document per node heard,
+ * not one document listing them.
+ *
+ * `index` walks the field view the same way report_nodes() does; returns NULL
+ * once it runs off the end. Caller frees.
+ */
+char *report_node_api_document(int index);
+
 #endif /* REPORT_H */

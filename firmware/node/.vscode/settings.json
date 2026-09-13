@@ -13,5 +13,6 @@
     },
     "C_Cpp.default.cStandard": "c11",
     "C_Cpp.intelliSenseEngine": "default",
-    "idf.currentSetup": "/home/vishal/.espressif/v6.1/esp-idf"
+    "idf.currentSetup": "/home/vishal/.espressif/v6.1/esp-idf",
+    "idf.port": "/dev/ttyACM0"
 }

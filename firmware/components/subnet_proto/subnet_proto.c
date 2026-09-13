@@ -43,6 +43,9 @@ uint16_t subnet_payload_len(uint8_t msg_type)
     case MSG_TIME_SYNC:  return sizeof(timesync_t);
     case MSG_POSITION:   return sizeof(pos_t);
     case MSG_NEIGHBOR:   return 0;   /* variable: header + count * entry */
+    /* Variable too: the filler after the struct is the point of the test. */
+    case MSG_RF_PING:
+    case MSG_RF_PONG:    return 0;
     default:             return 0;
     }
 }
@@ -112,6 +115,12 @@ subnet_err_t subnet_frame_parse(const uint8_t *buf, size_t len, subnet_frame_t *
         if (payload_len != sizeof(neigh_hdr_t) + (uint16_t)nh->count * sizeof(neigh_entry_t))
             return SUBNET_ERR_LENGTH;
     }
+    /* Anything past the struct is filler and is not read, but the struct
+     * itself must be there or the echo would be built from whatever follows
+     * the buffer. */
+    if ((type == MSG_RF_PING || type == MSG_RF_PONG) &&
+        payload_len < sizeof(rf_test_t))
+        return SUBNET_ERR_LENGTH;
 
     if (out) {
         out->type        = type;

@@ -16,6 +16,7 @@ cc -std=c11 -Wall -Wextra -Werror -O1 \
    -I../components/nodelogic/include \
    -I../components/gwrules/include \
    -I../components/statusled/include \
+   -I../components/rftest/include \
    test_firmware.c \
    ../components/subnet_proto/subnet_proto.c \
    ../components/meshnet/meshnet.c \
@@ -24,6 +25,7 @@ cc -std=c11 -Wall -Wextra -Werror -O1 \
    ../components/nodelogic/nodelogic.c \
    ../components/gwrules/gwrules.c \
    ../components/statusled/statusled_pattern.c \
+   ../components/rftest/rftest.c \
    -lm \
    -o "$OUT/test_firmware"
 

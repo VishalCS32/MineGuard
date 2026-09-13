@@ -47,8 +47,26 @@ typedef enum {
     LED_BACKEND_DOWN,     /* WiFi up, backend unreachable -- spooling        */
     LED_SPOOL_FILLING,    /* the backlog is deep enough to start shedding    */
     LED_OK,
+
+    /*
+     * A node's codes, and a separate language spoken on a separate box. They
+     * reuse the low blink counts on purpose: nobody stands in front of a node
+     * and a gateway at the same time, and short counts are easier to read than
+     * long ones. What a node's light answers is narrower -- "is the radio
+     * working, and does it have anybody to talk to?" -- because that is the
+     * only question a box on a post in a field can usefully be asked.
+     */
+    LED_NODE_RADIO_DOWN,  /* the LLCC68 did not answer on SPI at all         */
+    LED_NODE_TX_FAILING,  /* it initialised, but transmits are not completing */
+    LED_NODE_NO_MESH,     /* transmitting fine, nothing ever heard back       */
+    LED_NODE_LINK_STALE,  /* heard the mesh once, nothing for a long while    */
+    LED_NODE_OK,
+
     LED_CODE_COUNT,
 } statusled_code_t;
+
+/* The first node code, so a loop can tell the two vocabularies apart. */
+#define LED_NODE_FIRST  LED_NODE_RADIO_DOWN
 
 typedef struct {
     bool     radio_up;
@@ -77,6 +95,45 @@ typedef struct {
 /* Nothing is wrong with a gateway that has been up for ten seconds and heard
  * nobody yet. */
 #define STATUSLED_SETTLE_S      120
+
+/*
+ * What a node is allowed to hear, and how long it may hear nothing.
+ *
+ * A node is not a gateway: it is not addressed by anybody most of the time,
+ * and if it is not relaying it may legitimately hear only the gateway's
+ * TIME_SYNC -- which arrives every 600 s. So the threshold is one missed sync
+ * plus margin, not the three minutes a gateway is held to. Any shorter and a
+ * perfectly healthy non-relay node would sit there reporting a fault between
+ * syncs, which would teach whoever installed it to ignore the light.
+ */
+#define STATUSLED_NODE_QUIET_S  660
+
+/*
+ * How long a node may have heard NOTHING AT ALL before that is a fault.
+ *
+ * Not the gateway's settle window, which is the mistake this constant exists
+ * to correct. A gateway hears its field every 60 s, so two minutes of silence
+ * is already wrong. A node is on the other side of that asymmetry: it is not
+ * addressed by anybody most of the time, and the first frame it can expect to
+ * hear is the gateway's TIME_SYNC -- up to 600 s away, and up to 600 s away
+ * from a gateway that is working perfectly. Judging a node at 120 s reports
+ * "no mesh" on a healthy link for the first eight minutes of every boot,
+ * which is exactly the false alarm that gets an indicator ignored.
+ */
+#define STATUSLED_NODE_SETTLE_S 660
+
+typedef struct {
+    bool     radio_up;      /* llcc68_init() succeeded                       */
+    /* The last transmit attempt completed. A radio that initialises and then
+     * cannot send is the failure a "powered" light would hide: the SPI wiring
+     * is fine, so everything looks healthy, and nothing ever leaves the box. */
+    bool     tx_ok;
+    /* Since the last frame heard from anyone. UINT32_MAX before the first. */
+    uint32_t heard_s;
+    uint32_t uptime_s;
+} statusled_node_input_t;
+
+statusled_code_t statusled_evaluate_node(const statusled_node_input_t *in);
 
 /* A colour, at the low brightness this thing is driven at. */
 typedef struct {

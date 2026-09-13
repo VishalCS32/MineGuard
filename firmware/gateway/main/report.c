@@ -93,6 +93,13 @@ cJSON *report_status(void)
     cJSON_AddStringToObject(led_obj, "code", statusled_tag(led));
     cJSON_AddNumberToObject(led_obj, "blinks", statusled_blinks(led));
     cJSON_AddStringToObject(led_obj, "meaning", statusled_meaning(led));
+    /* The colour too, so the chip on the page is the colour of the light on
+     * the box -- with an RGB indicator the hue carries half the message, and a
+     * page that reported only the count would throw that half away. */
+    char led_hex[8];
+    statusled_colour_hex(led, led_hex, sizeof(led_hex));
+    cJSON_AddStringToObject(led_obj, "colour", led_hex);
+    cJSON_AddNumberToObject(led_obj, "gpio", (int)statusled_pin());
 
     cJSON_AddNumberToObject(root, "vbat_mv", st.vbat_mv);
     return root;
@@ -136,6 +143,141 @@ cJSON *report_nodes(void)
         cJSON_AddItemToArray(arr, o);
     }
     return root;
+}
+
+/*
+ * One node, in the upstream API's schema.
+ *
+ * WHERE THIS SCHEMA AND THIS HARDWARE DISAGREE, and what is done about it.
+ *
+ * The schema describes a richer instrument than a node actually is, and the
+ * honest response to a field we cannot measure is `null` -- not 0.0. A zero
+ * in `gyro.x` is a claim: it says the node measured rotation and found none.
+ * A null says nobody asked. On a system whose whole job is to notice small
+ * movements, a fabricated "perfectly still" is the single worst value we
+ * could send, because it is indistinguishable from a good reading.
+ *
+ *   gyro           there is no gyroscope on the board. A LIS3DH is a
+ *                  three-axis accelerometer and nothing else. Null, always.
+ *   accelerometer  measured on the node, but not transmitted: the frame
+ *                  carries the derived pitch/roll instead, because 52 bytes
+ *                  of payload does not stretch to raw axes at 22 dBm. The
+ *                  gravity vector could be reconstructed from orientation,
+ *                  and is not -- that would be arithmetic dressed as a
+ *                  measurement, and it would round-trip its own input.
+ *   vibration xyz  same: the node computes RMS over a 32-sample burst and
+ *                  sends the scalar. Per-axis never leaves the node. `rms`
+ *                  is real and is populated.
+ *   hdop           the receiver reports a horizontal accuracy estimate in
+ *                  centimetres, which is not HDOP and does not convert to
+ *                  it -- HDOP is a geometry factor, metres are a result.
+ *                  Null, with the real figure alongside as `h_acc_m`.
+ *
+ * Everything else is measured and is real.
+ */
+char *report_node_api_document(int index)
+{
+    fieldview_node_t n;
+    if (!fieldview_get(index, &n)) return NULL;
+
+    cJSON *root = cJSON_CreateObject();
+
+    /* Stable and derived from the address, so a node keeps its identity
+     * across a relabelling and two gateways cannot disagree about it. */
+    char node_id[16];
+    snprintf(node_id, sizeof(node_id), "NODE-%04X", n.addr);
+    cJSON_AddStringToObject(root, "node_id", node_id);
+
+    /* The node's own clock where it had one. A node that has never had a
+     * TIME_SYNC stamps zero, and rather than relabel that as now -- which
+     * would silently claim a precision the reading does not have -- we fall
+     * back to the gateway's clock and let `stamped_by` say which it was. */
+    uint32_t epoch = n.have_tlm && n.tlm_epoch ? n.tlm_epoch
+                   : uplink_time_valid()         ? (uint32_t)time(NULL)
+                                                 : 0;
+    char iso[32] = "";
+    if (epoch) {
+        time_t t = (time_t)epoch;
+        struct tm tm;
+        gmtime_r(&t, &tm);
+        strftime(iso, sizeof(iso), "%Y-%m-%dT%H:%M:%SZ", &tm);
+    }
+    cJSON_AddStringToObject(root, "timestamp", iso);
+    cJSON_AddStringToObject(root, "stamped_by",
+                            (n.have_tlm && n.tlm_epoch) ? "node" : "gateway");
+
+    cJSON *sd = cJSON_AddObjectToObject(root, "sensor_data");
+
+    /* No gyroscope exists on this hardware. */
+    cJSON *gyro = cJSON_AddObjectToObject(sd, "gyro");
+    cJSON_AddNullToObject(gyro, "x");
+    cJSON_AddNullToObject(gyro, "y");
+    cJSON_AddNullToObject(gyro, "z");
+    cJSON_AddStringToObject(gyro, "unit", "deg/s");
+
+    /* Measured, but not carried over the air -- see the note above. */
+    cJSON *acc = cJSON_AddObjectToObject(sd, "accelerometer");
+    cJSON_AddNullToObject(acc, "x");
+    cJSON_AddNullToObject(acc, "y");
+    cJSON_AddNullToObject(acc, "z");
+    cJSON_AddStringToObject(acc, "unit", "m/s^2");
+
+    cJSON *ori = cJSON_AddObjectToObject(sd, "orientation");
+    if (n.have_tlm) {
+        cJSON_AddNumberToObject(ori, "roll",  n.roll_mdeg / 1000.0);
+        cJSON_AddNumberToObject(ori, "pitch", n.pitch_mdeg / 1000.0);
+    } else {
+        cJSON_AddNullToObject(ori, "roll");
+        cJSON_AddNullToObject(ori, "pitch");
+    }
+    cJSON_AddStringToObject(ori, "unit", "deg");
+
+    cJSON *vib = cJSON_AddObjectToObject(sd, "vibration");
+    cJSON_AddNullToObject(vib, "x");
+    cJSON_AddNullToObject(vib, "y");
+    cJSON_AddNullToObject(vib, "z");
+    if (n.have_tlm)
+        /* Milli-g on the wire; the schema wants m/s^2. */
+        cJSON_AddNumberToObject(vib, "rms", n.vib_rms_mg * 9.80665 / 1000.0);
+    else
+        cJSON_AddNullToObject(vib, "rms");
+    cJSON_AddStringToObject(vib, "unit", "m/s^2");
+
+    if (n.have_tlm) {
+        cJSON_AddNumberToObject(sd, "temperature_c", n.temp_c_x100 / 100.0);
+        cJSON_AddNumberToObject(sd, "battery_mv", n.vbat_mv);
+    } else {
+        cJSON_AddNullToObject(sd, "temperature_c");
+        cJSON_AddNullToObject(sd, "battery_mv");
+    }
+
+    cJSON *gps = cJSON_AddObjectToObject(root, "gps");
+    if (n.have_pos) {
+        cJSON_AddNumberToObject(gps, "latitude",  n.lat_e7 / 1e7);
+        cJSON_AddNumberToObject(gps, "longitude", n.lon_e7 / 1e7);
+        cJSON_AddNumberToObject(gps, "altitude",  n.alt_m);
+        cJSON_AddNumberToObject(gps, "h_acc_m",   n.h_acc_cm / 100.0);
+    } else {
+        cJSON_AddNullToObject(gps, "latitude");
+        cJSON_AddNullToObject(gps, "longitude");
+        cJSON_AddNullToObject(gps, "altitude");
+        cJSON_AddNullToObject(gps, "h_acc_m");
+    }
+    /* Satellite count rides in every telemetry frame, so it is current even
+     * when the last actual fix is hours old. */
+    if (n.have_tlm) cJSON_AddNumberToObject(gps, "satellites", GNSS_SATS_OF(n.gnss_status));
+    else            cJSON_AddNullToObject(gps, "satellites");
+    cJSON_AddNullToObject(gps, "hdop");     /* not measured; see h_acc_m */
+
+    cJSON *comm = cJSON_AddObjectToObject(root, "communication");
+    cJSON_AddNumberToObject(comm, "rssi_dbm", n.rssi);
+    cJSON_AddNumberToObject(comm, "snr_db", (n.snr / 4.0) - 20.0);
+
+    cJSON_AddNumberToObject(root, "flags", n.have_tlm ? n.flags : 0);
+
+    char *text = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    return text;
 }
 
 char *report_push_document(void)

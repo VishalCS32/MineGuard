@@ -31,6 +31,11 @@
 #define MSG_NEIGHBOR        0x5   /* up   - RSSI table -> topology graph */
 #define MSG_TIME_SYNC       0x6   /* down - nodes have no RTC */
 #define MSG_POSITION        0x7   /* up   - GNSS fix, low rate */
+/* Bench and commissioning only. These two never reach the backend: the gateway
+ * answers a ping and drops it, rather than spooling a frame whose only purpose
+ * was to prove the radio can carry one. */
+#define MSG_RF_PING         0x8   /* either way - link test, expects a PONG */
+#define MSG_RF_PONG         0x9   /* either way - the echo, with the RSSI   */
 
 #define VER_TYPE(v, t)      (uint8_t)(((v) << 4) | ((t) & 0x0F))
 #define VT_VERSION(vt)      (uint8_t)((vt) >> 4)
@@ -84,6 +89,11 @@ typedef struct __attribute__((packed)) {
 #define GNSS_FIX_3D         2
 #define GNSS_FIX_DGPS       3
 #define GNSS_STATUS(fix, sats) (uint8_t)(((fix) & 0x03) | (((sats) & 0x3F) << 2))
+/* ...and back out again. The packer existed without these for a while, so
+ * every reader open-coded the shift and the mask, which is two chances each
+ * to get it wrong silently. */
+#define GNSS_FIX_OF(s)         (uint8_t)((s) & 0x03)
+#define GNSS_SATS_OF(s)        (uint8_t)(((s) >> 2) & 0x3F)
 
 /* MSG_EVENT - 14 B. Threshold breach detected on-node; sent immediately. */
 typedef struct __attribute__((packed)) {
@@ -135,6 +145,26 @@ typedef struct __attribute__((packed)) {
 #define CFG_FLAG_VIB_ENABLED    (1u << 2)
 #define CFG_FLAG_DEEP_SLEEP     (1u << 3)
 #define CFG_FLAG_RECALIBRATE    (1u << 4)   /* one-shot: re-zero the tilt   */
+/*
+ * Light the node's onboard RGB pixel with the radio's status. ON by default.
+ *
+ * The cost is smaller than it first looks, and the reasoning is worth writing
+ * down because the obvious version of it is wrong. A WS2812's controller
+ * draws ~1 mA even showing black -- but it draws that whenever the pixel has
+ * power, which on a board with the pixel wired straight to 3V3 is always,
+ * awake or deep asleep, flag set or clear. Clearing this bit does not recover
+ * that milliamp; only cutting the pixel's supply would.
+ *
+ * What the flag actually costs is the light itself: one channel at brightness
+ * 24/255 for 60 ms every 3 s. A couple of milliamps at a 2% duty cycle, so
+ * well under 0.1 mA averaged -- against a standing draw the board imposes
+ * either way. That is a rounding error, and a rounding error is a bad reason
+ * to ship nodes that cannot tell you why they are silent.
+ *
+ * Clear it if a board turns out to gate the pixel's supply, or to make a node
+ * dark for a covert or light-sensitive installation.
+ */
+#define CFG_FLAG_LED_ENABLED    (1u << 5)
 
 /* MSG_CONFIG_ACK - 9 B. */
 typedef struct __attribute__((packed)) {
@@ -161,6 +191,36 @@ typedef struct __attribute__((packed)) {
 } neigh_hdr_t;
 
 #define MESH_MAX_NEIGHBORS  8
+
+/*
+ * MSG_RF_PING / MSG_RF_PONG - 10 B + optional filler.
+ *
+ * What this exists to answer, which nothing else in the protocol does: does
+ * this radio actually move bytes to that radio, right now, and how well? A
+ * node that boots, initialises its LLCC68 and reports nothing looks identical
+ * to a node with a disconnected antenna -- both are silent, and the telemetry
+ * path cannot tell you which, because it is the path that is broken.
+ *
+ * The echo carries the RSSI and SNR the ECHOER measured, which is the half of
+ * a link budget a one-way test cannot see. A link that is strong outbound and
+ * deaf inbound is a real and common failure -- a detuned antenna on one end,
+ * or a receiver desensitised by its own switching supply -- and it looks
+ * perfectly healthy from the transmitting side alone.
+ *
+ * `pad` is filler, not data: a payload the caller can grow to check that a
+ * link which passes a 10-byte frame also passes a full-length one. Fading and
+ * marginal SNR both hit long frames first, so a test that only ever sends
+ * short ones reports a link that does not exist at telemetry sizes.
+ */
+typedef struct __attribute__((packed)) {
+    uint32_t seq;           /* echoed verbatim: identifies which ping        */
+    uint32_t t_ms;          /* sender's clock, echoed -> round-trip time     */
+    int8_t   rssi_dbm;      /* PONG: what the echoer heard. PING: 0          */
+    int8_t   snr_x4;        /* PONG: quarter-dB. PING: 0                     */
+    /* uint8_t pad[]; -- filler to the requested frame size                  */
+} rf_test_t;
+
+#define RF_TEST_MAX_PAD  (MESH_MAX_PAYLOAD - (int)sizeof(rf_test_t))
 
 /* MSG_TIME_SYNC - 6 B. */
 typedef struct __attribute__((packed)) {

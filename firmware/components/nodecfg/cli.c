@@ -16,10 +16,12 @@
 #include "freertos/task.h"
 
 #include "nodecfg.h"
+#include "rftest.h"
 #include "subnet_proto.h"
 
 static const char *TAG = "cli";
 static nodecfg_t *g_cfg;
+static nodecfg_hooks_t g_hooks;
 
 #define CLI_LINE_MAX 160   /* not LINE_MAX: that is POSIX's, in limits.h */
 
@@ -63,7 +65,8 @@ static void cmd_help(void)
       "  set vib-alert <mg>\n"
       "  set tx-power <10..22>\n"
       "  set wor <ms>             wake-on-radio listen cadence\n"
-      "  set flags <0x0F>         bit0 relay, bit1 gnss, bit2 vib, bit3 deep-sleep\n"
+      "  set flags <0x0F>         bit0 relay, bit1 gnss, bit2 vib, bit3 deep-sleep,\n"
+      "                           bit4 recalibrate (one-shot), bit5 status LED\n"
       "  set offsets <pitch> <roll>   tilt zero-offset, mdeg\n"
       "  set wifi <ssid> <pass>   gateway\n"
       "  set api <url>            gateway\n"
@@ -73,6 +76,16 @@ static void cmd_help(void)
       "  set sms <+91...,+91...>  gateway\n"
       "  set ap-pass <8+ chars>   gateway; guards the on-site web UI\n"
       "  set push <url|->         gateway; realtime JSON push endpoint\n"
+      "  set led-pin <21|->       gateway; onboard RGB pixel, - = board default\n"
+      "  set led-order grb|rgb    only if the boot sweep comes out green/red/blue\n"
+      "  rftest [dst] [n] [pad]   RF link test: n round trips to dst, each\n"
+      "                           carrying pad extra bytes. On a node dst\n"
+      "                           defaults to the gateway. Prints loss, RTT\n"
+      "                           and the signal BOTH ends measured.\n"
+      "  gnsstest [seconds]       raw NMEA straight off the receiver, to tell\n"
+      "                           a wiring fault from a missing fix (node)\n"
+      "  modemtest                shout AT at the SIM800L across every baud\n"
+      "                           rate and print what comes back (gateway)\n"
       "  save | reboot | factory\n\n");
 }
 
@@ -149,12 +162,91 @@ static bool handle_set(char *args)
         copy_arg(c->ap_pass, sizeof(c->ap_pass), val);
     } else if (!strcmp(key, "sms")) {
         copy_arg(c->sms_recipients, sizeof(c->sms_recipients), val);
+    } else if (!strcmp(key, "led-pin")) {
+        /* "-" goes back to the board default. The exclusions are pins that
+         * would not merely fail to blink: 19/20 are the native USB the console
+         * is speaking over, and 26..37 are SPI flash and octal PSRAM, which
+         * would take the board down with them. Refused rather than tried. */
+        if (!strcmp(val, "-")) { c->led_gpio = 0; }
+        else if (!parse_u32(val, &n) || n > 48 ||
+                 (n >= 19 && n <= 20) || (n >= 26 && n <= 37)) {
+            printf("ERR led-pin is 0..48, not 19..20 (USB console) "
+                   "or 26..37 (flash/PSRAM), or - for the board default\n");
+            return false;
+        } else {
+            c->led_gpio = (uint8_t)n;
+        }
+        printf("note: takes effect at the next reboot\n");
+    } else if (!strcmp(key, "led-order")) {
+        if (!strcmp(val, "rgb"))      c->led_order_rgb = 1;
+        else if (!strcmp(val, "grb")) c->led_order_rgb = 0;
+        else { printf("ERR led-order is grb or rgb\n"); return false; }
+        printf("note: takes effect at the next reboot\n");
     } else {
         printf("ERR unknown key '%s'\n", key);
         return false;
     }
     printf("OK %s\n", key);
     return true;
+}
+
+/*
+ * `rftest [dst] [count] [pad]`
+ *
+ * The one command that answers "is this post going to work?" before somebody
+ * drives back down the hill. Everything is optional and the defaults are the
+ * common case: on a node, twenty round trips to the gateway at the smallest
+ * frame size.
+ */
+static void cmd_rftest(char *args)
+{
+    if (!g_hooks.rftest) {
+        printf("ERR rftest is not available on this build\n");
+        return;
+    }
+
+    uint32_t dst = 0, count = RFTEST_DEFAULT_COUNT, pad = 0, v;
+    char *a = args ? strtok(args, " \t") : NULL;
+
+    if (a) {
+        if (!parse_u32(a, &v) || v == ADDR_UNASSIGNED || v > 0xFFFF) {
+            printf("ERR dst must be 0x0001..0xFFFF\n"); return;
+        }
+        dst = v;
+        if ((a = strtok(NULL, " \t"))) {
+            if (!parse_u32(a, &v) || v == 0 || v > RFTEST_MAX_COUNT) {
+                printf("ERR count is 1..%d\n", RFTEST_MAX_COUNT); return;
+            }
+            count = v;
+            if ((a = strtok(NULL, " \t"))) {
+                if (!parse_u32(a, &v) || v > RF_TEST_MAX_PAD) {
+                    printf("ERR pad is 0..%d bytes\n", RF_TEST_MAX_PAD); return;
+                }
+                pad = v;
+            }
+        }
+    }
+
+    if (dst == 0) {
+        /* A node's only interesting peer is the gateway. A gateway has
+         * twenty-one and cannot guess which one you are standing next to. */
+        if (g_cfg->role == NODE_ROLE_GATEWAY) {
+            printf("ERR which node? `rftest 0x0011`\n");
+            return;
+        }
+        dst = ADDR_GATEWAY;
+    }
+    if (dst == g_cfg->addr) {
+        printf("ERR a radio cannot hear itself; pick the other end\n");
+        return;
+    }
+
+    printf("rftest -> 0x%04X: %lu round trips, %lu B of filler\n",
+           (unsigned)dst, (unsigned long)count, (unsigned long)pad);
+    if (!g_hooks.rftest((uint16_t)dst, (uint16_t)count, (uint8_t)pad))
+        printf("ERR rftest could not run -- is the radio up?\n");
+    else
+        printf("OK rftest\n");
 }
 
 static void handle_line(char *line)
@@ -174,6 +266,28 @@ static void handle_line(char *line)
         char *rest = strtok(NULL, "");
         if (!rest) { printf("ERR set what?\n"); return; }
         handle_set(rest);
+    } else if (!strcmp(cmd, "rftest")) {
+        cmd_rftest(strtok(NULL, ""));
+    } else if (!strcmp(cmd, "modemtest")) {
+        if (!g_hooks.modemtest) printf("ERR no modem on this build\n");
+        else printf(g_hooks.modemtest() ? "OK modemtest\n"
+                                        : "ERR the modem did not answer\n");
+    } else if (!strcmp(cmd, "gnsstest")) {
+        if (!g_hooks.gnsstest) {
+            printf("ERR no GNSS on this build\n");
+        } else {
+            char *a = strtok(NULL, " \t");
+            uint32_t secs = 10, v;
+            if (a && (!parse_u32(a, &v) || v < 1 || v > 120)) {
+                printf("ERR seconds is 1..120\n");
+            } else {
+                if (a) secs = v;
+                printf("listening to the receiver for %lu s...\n",
+                       (unsigned long)secs);
+                printf(g_hooks.gnsstest(secs) ? "OK gnsstest\n"
+                                              : "ERR no GNSS receiver\n");
+            }
+        }
     } else if (!strcmp(cmd, "save")) {
         printf(nodecfg_save(g_cfg) ? "OK saved\n" : "ERR nvs write failed\n");
     } else if (!strcmp(cmd, "reboot")) {
@@ -217,9 +331,10 @@ static void cli_task(void *arg)
     }
 }
 
-void nodecfg_cli_start(nodecfg_t *cfg)
+void nodecfg_cli_start(nodecfg_t *cfg, const nodecfg_hooks_t *hooks)
 {
     g_cfg = cfg;
+    if (hooks) g_hooks = *hooks;
     /* Small stack: this task does string handling and nothing else. It runs at
      * a low priority so provisioning chatter can never delay a radio deadline. */
     if (xTaskCreate(cli_task, "cli", 4096, NULL, 2, NULL) != pdPASS)

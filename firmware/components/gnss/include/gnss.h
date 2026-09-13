@@ -59,4 +59,26 @@ void gnss_power(gnss_t *g, bool on);
  */
 esp_err_t gnss_acquire(gnss_t *g, gnss_fix_t *out, uint32_t timeout_ms);
 
+/*
+ * Print whatever the receiver is actually saying, raw, for `seconds`.
+ *
+ * This exists because "no fix" has two completely different causes that look
+ * identical from the outside, and the one everybody assumes is the rarer of
+ * the two. A receiver under open sky reports "0 sats seen" for both:
+ *
+ *   nothing arrives on the wire   -- TX/RX not crossed, a broken lead, the
+ *                                    module unpowered. Nothing to do with sky.
+ *   sentences arrive, no fix yet  -- genuinely the sky, the antenna, or a
+ *                                    cold start with a flat backup cell.
+ *
+ * Thirty minutes under a clear sky is an expensive way to distinguish them.
+ * Ten seconds of raw bytes is not: if the count is zero it is the wiring, and
+ * if `$GPGGA` scrolls past it never was.
+ *
+ * Returns the number of bytes seen, and reports how many looked like complete
+ * NMEA sentences -- bytes arriving as mojibake is the signature of a baud
+ * mismatch rather than a dead link.
+ */
+size_t gnss_raw_dump(gnss_t *g, uint32_t seconds, uint32_t *sentences_out);
+
 #endif /* GNSS_H */

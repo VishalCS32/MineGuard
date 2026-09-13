@@ -80,7 +80,24 @@ esp_err_t lis3dh_init(lis3dh_t *s, i2c_master_bus_handle_t bus, uint8_t addr)
 found:
     /* 100 Hz, all axes, high-resolution mode. */
     ESP_ERROR_CHECK(wr(s, REG_CTRL1, 0x57));
-    ESP_ERROR_CHECK(wr(s, REG_CTRL4, 0x08));   /* +/-2 g, high resolution */
+    /*
+     * BDU | +/-2 g | high resolution.
+     *
+     * BDU (bit 7) is not optional here, and leaving it clear fails in a way
+     * that looks like a missing sensor rather than a missing bit: the
+     * accelerometer keeps working perfectly and OUT_TEMP just reads zero for
+     * ever. The datasheet requires BDU for the temperature output, because
+     * the value spans two registers and without block-data-update the low
+     * and high bytes can come from different conversions -- so the part
+     * simply withholds it.
+     *
+     * What that quietly costs is the thermal drift correction. The backend
+     * subtracts (temp - baseline_temp) * drift from every tilt reading, and
+     * with both terms stuck at zero the subtraction is a no-op. Nothing
+     * errors; the daily thermal swing of the post just stays in the data,
+     * where it is larger than the subsidence being looked for.
+     */
+    ESP_ERROR_CHECK(wr(s, REG_CTRL4, 0x88));
     ESP_ERROR_CHECK(wr(s, REG_TEMP_CFG, 0xC0));/* enable the temperature ADC */
     ESP_ERROR_CHECK(wr(s, REG_CTRL5, 0x40));   /* latch INT1 until read */
     vTaskDelay(pdMS_TO_TICKS(20));

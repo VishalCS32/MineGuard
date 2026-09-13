@@ -356,3 +356,44 @@ class TestGnss:
         node = next(n for n in (await provisioned.get("/api/nodes")).json()
                     if n["addr"] == 0x43)
         assert node["lat"] is None
+
+
+class TestNodesWithoutAClock:
+    """A node that has never received a TIME_SYNC still produces usable data.
+
+    It stamps its frames epoch 0, which happens whenever the downlink has not
+    worked yet -- a one-way radio link, or simply a node younger than one sync
+    interval. The reading itself is perfectly good and must not be thrown away
+    over a missing timestamp.
+    """
+
+    async def test_a_clockless_frame_is_stamped_on_arrival(self, provisioned, b64):
+        """Filed at 1970 the measurement is not mis-timed, it is gone.
+
+        Every query, chart and baseline is bounded by time, so a row dated
+        1970 is invisible to all of them -- a silent loss, which is worse than
+        a visibly wrong one.
+        """
+        before = time.time() - 5
+        await post_frames(provisioned, b64, tlm(pitch=120, t=0).frame(src=0x10, seq=1))
+
+        rows = (await provisioned.get("/api/nodes/16/history")).json()
+        assert rows, "the frame was accepted, not dropped for want of a clock"
+        stamped = rows[-1]["t"] / 1000.0      # the chart carries epoch millis
+        assert stamped > before, "stamped on arrival rather than filed in 1970"
+
+    async def test_a_node_with_a_clock_keeps_its_own_timestamp(self, provisioned, b64):
+        """The substitution is a fallback, never an override.
+
+        A frame held in the gateway's spool through a backhaul outage arrives
+        late and carries the time it was actually measured. Overwriting that
+        with arrival time would relabel an hour-old reading as current, which
+        is exactly the lie the rate calculation cannot survive.
+        """
+        measured = int(time.time()) - 3600
+        await post_frames(provisioned, b64,
+                          tlm(pitch=90, t=measured).frame(src=0x11, seq=1))
+
+        rows = (await provisioned.get("/api/nodes/17/history")).json()
+        stamped = rows[-1]["t"] / 1000.0
+        assert abs(stamped - measured) < 2, "the node's own clock is respected"

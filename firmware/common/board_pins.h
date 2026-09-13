@@ -44,6 +44,16 @@
 #define PIN_I2C_SDA        8
 #define PIN_I2C_SCL        9
 
+/*
+ * The two deep-sleep wake sources. Both MUST stay inside GPIO0..21: EXT1 wake
+ * works only on RTC-capable pins, and on this board (which breaks out 1..18
+ * and 21, with 21 taken by the pixel) every one of those is spoken for except
+ * GPIO3, a strapping pin. There is no third option, so neither of these may
+ * be moved to a high GPIO to make room for something else -- doing so does
+ * not merely relocate the sensor, it silently removes the node's ability to
+ * respond to a blast in milliseconds instead of at its next slot.
+ */
+
 /* Accelerometer interrupt: the LIS3DH watches for motion at ~2 uA while the
  * ESP32 is in deep sleep and pulls this line high when it sees an impact. */
 #define PIN_LIS3DH_INT1    4
@@ -71,8 +81,16 @@
 #define PIN_GNSS_PPS       6     /* optional; -1 if not wired               */
 /* High-side load switch. The receiver draws ~45 mA whenever its antenna is
  * live, against ~10 uA for the sleeping ESP32 -- left powered it is the entire
- * energy budget, so it is switched, not just told to idle. */
-#define PIN_GNSS_EN        21
+ * energy budget, so it is switched, not just told to idle.
+ *
+ * GPIO2, not the GPIO21 an S3 pinout would suggest: on the ESP32-S3-Zero the
+ * WS2812 owns GPIO21 and the pin is not brought out to a pad at all, so a
+ * load switch there is not merely a conflict, it is a wire with nowhere to
+ * land. GPIO2 is broken out, is not a strapping pin, and is inside the
+ * RTC-capable range (GPIO0..21) -- which matters here: the level has to be
+ * held through deep sleep, or the receiver powers itself back up the moment
+ * the ESP32 stops driving the gate. */
+#define PIN_GNSS_EN        2
 
 /* Battery sense. ADC1, through a 100k/100k divider, so a 4.2 V cell reads
  * 2.1 V -- inside the 11 dB attenuated range with headroom. The divider is
@@ -82,7 +100,12 @@
 #define PIN_VBAT_EN        1     /* -1 if the divider is left permanently on */
 #define VBAT_DIVIDER_X100  200   /* 2.00x: 100k over 100k                    */
 
-#define PIN_STATUS_LED     2
+/* The module's onboard WS2812, and left dark on purpose. Its controller draws
+ * ~1 mA continuously even showing black -- fifty times a sleeping node's whole
+ * budget, a third of its battery life spent on a light nobody is standing in
+ * front of. Named here because GPIO21 is not a free pin to be spent elsewhere:
+ * on this board it is not brought out at all. */
+#define PIN_RGB_LED        21
 
 /* Deep-sleep wake mask: either wake source pulls its pin high. */
 #define NODE_EXT1_WAKE_MASK  ((1ULL << PIN_LIS3DH_INT1) | (1ULL << PIN_VIB_INT))
@@ -108,12 +131,19 @@
  * microSD card and a 2G modem -- on the very same pins:
  *
  *      node                       gateway
- *      GPIO8  LIS3DH SDA    ->    SIM800L STATUS  (input)
  *      GPIO9  LIS3DH SCL    ->    microSD CS
- *      GPIO17 GNSS RX       ->    SIM800L RXD     (ESP TX, via divider)
- *      GPIO18 GNSS TX       ->    SIM800L TXD     (ESP RX)
- *      GPIO21 GNSS power    ->    SIM800L PWRKEY
- *      GPIO7  battery sense ->    supply rail sense (different divider)
+ *      GPIO2  GNSS power    ->    SIM800L PWRKEY
+ *      GPIO21 onboard RGB   ->    onboard RGB     (same pixel; lit only here)
+ *
+ * Four pins where the two roles genuinely diverge, because the gateway's
+ * modem UART was moved off 17/18 -- those are wired to something else on the
+ * gateway hardware -- and everything it displaced had to shift with it:
+ *
+ *      node                       gateway
+ *      GPIO8  LIS3DH SDA    ->    SIM800L RXD     (ESP TX, via divider)
+ *      GPIO7  battery sense ->    SIM800L TXD     (ESP RX)
+ *      GPIO4  LIS3DH INT1   ->    supply rail sense (ADC1, different divider)
+ *      GPIO17/18 GNSS UART  ->    free on the gateway
  */
 #if defined(BOARD_GATEWAY)
 
@@ -133,21 +163,63 @@
 
 /* SIM800L -- UART1. The module's logic is 2.8 V: its TX drives the ESP32
  * directly (2.8 V clears the 3.3 V input threshold), but the ESP32's TX must go
- * through a divider or the module's RX pin sits above its absolute maximum. */
-#define PIN_SIM_TX         17    /* ESP32 TX -> SIM800L RXD, via divider     */
-#define PIN_SIM_RX         18    /* ESP32 RX <- SIM800L TXD, direct          */
-/* PWRKEY is pulled low for ~1.2 s to toggle power. Drive it through an NPN or
- * an open-drain output: the pin idles at the module's own 4 V rail. */
-#define PIN_SIM_PWRKEY     21
-#define PIN_SIM_STATUS     8     /* high once the modem is up                */
+ * through a divider or the module's RX pin sits above its absolute maximum.
+ *
+ * On GPIO8/7 rather than the 17/18 a node uses for its GNSS. Any UART can be
+ * routed to any GPIO through the S3's matrix, so the choice costs nothing --
+ * but it does break the node/gateway pin symmetry on this pair, which is why
+ * it is called out here and in the table above. 9600 baud is far below
+ * anything the matrix cares about. */
+#define PIN_SIM_TX         8     /* ESP32 TX -> SIM800L RXD, via divider     */
+#define PIN_SIM_RX         7     /* ESP32 RX <- SIM800L TXD, direct          */
+/*
+ * PWRKEY and STATUS: -1, because the breakout in use does not have them.
+ *
+ * The common blue SIM800L board brings out seven pins -- VCC, GND, VDD, TXD,
+ * RXD, GND, RESET -- and PWRKEY is tied on the board so the module starts as
+ * soon as it has power. There is nothing to drive and nothing to read back.
+ * The driver already treats both as optional; naming them -1 here is what
+ * tells it so, and it stops the firmware reporting that it is "toggling
+ * PWRKEY" at a pin that does not exist.
+ *
+ * What is lost is the ability to power-cycle a wedged modem in software, and
+ * the ability to know it is up without asking it. On a board that has them,
+ * set these to real GPIOs -- GPIO2 and GPIO6 are free and were their previous
+ * home. RESET on this variant could serve the same purpose and the driver
+ * does not use it yet.
+ */
+#define PIN_SIM_PWRKEY     -1
+#define PIN_SIM_STATUS     -1    /* not brought out on this breakout         */
 
 /* Supply sense: the 12 V solar/battery rail through a 100k/22k divider. ADC1,
  * because ADC2 is unavailable whenever WiFi is running -- which on a gateway is
- * always, and the reading would fail exactly when the gateway is working. */
-#define PIN_VBAT_ADC       7
+ * always, and the reading would fail exactly when the gateway is working.
+ *
+ * GPIO4 rather than the node's GPIO7, which the modem's UART now occupies.
+ * ADC1 is GPIO1..10 on the S3, so the replacement had to come from that range
+ * -- 4 is inside it, is broken out, and is not a strapping pin. The driver
+ * resolves the channel from the pin itself, so nothing else changes. */
+#define PIN_VBAT_ADC       4
 #define VBAT_DIVIDER_X100  555   /* 5.55x: (100k + 22k) / 22k                */
 
-#define PIN_STATUS_LED     2
+/*
+ * The indicator: the addressable RGB pixel already fitted to the board -- no
+ * LED, no resistor, no pad, nothing to wire. A WS2812 gives colour as well as
+ * a blink count, which is what lets one light say both how bad it is and which
+ * part is broken; see components/statusled and docs/HARDWARE.md 3.5.
+ *
+ * GPIO21 on the Waveshare ESP32-S3-Zero these boards are built from, and the
+ * pin is not broken out to a pad -- it exists only as the pixel's DIN, which
+ * is why nothing else may claim it. Other S3 boards put their pixel on 48
+ * (DevKitC-1), 47, 38 or 8, and firmware cannot discover which; hence the
+ * runtime override, `set led-pin 48` on the console. This value is only the
+ * default, and if nothing lights up it is the first thing to try.
+ *
+ * The node has the same pixel on the same pin and deliberately leaves it dark:
+ * a WS2812's controller draws ~1 mA even showing black, which is nothing on a
+ * gateway with a panel and everything on a node running from a cell.
+ */
+#define PIN_RGB_LED        21
 
 #endif /* BOARD_GATEWAY */
 

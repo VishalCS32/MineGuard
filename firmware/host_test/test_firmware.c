@@ -18,6 +18,7 @@
 #include "llcc68_limits.h"
 #include "meshnet.h"
 #include "nodelogic.h"
+#include "rftest.h"
 #include "statusled_pattern.h"
 #include "subnet_proto.h"
 
@@ -986,17 +987,243 @@ static void test_led_codes_are_distinguishable(void)
 {
     TEST("every code has a distinct blink count, a tag and an explanation");
     /* The blink count is the entire user interface of this device at night;
-     * two codes sharing one would make the display ambiguous. */
+     * two codes sharing one would make the display ambiguous. Distinctness is
+     * required WITHIN a vocabulary, not across them: a node and a gateway are
+     * never read at the same moment, and short counts are easier to count. */
     for (int a = 0; a < LED_CODE_COUNT; a++) {
         CHECK(statusled_tag((statusled_code_t)a)[0] != '\0', "has a tag");
         CHECK(statusled_meaning((statusled_code_t)a)[0] != '\0', "has an explanation");
-        for (int b = a + 1; b < LED_CODE_COUNT; b++)
+        bool a_node = (a >= LED_NODE_FIRST);
+        for (int b = a + 1; b < LED_CODE_COUNT; b++) {
+            if (a_node != (b >= LED_NODE_FIRST)) continue;
             CHECK(statusled_blinks((statusled_code_t)a) != statusled_blinks((statusled_code_t)b),
-                  "no two codes blink the same number of times");
+                  "no two codes in one vocabulary blink the same number of times");
+        }
     }
     CHECK(statusled_blinks(LED_RADIO_DOWN) == 0,
           "the fatal one is a continuous flash, not a count to be read");
     CHECK(statusled_blinks(LED_OK) == 1, "healthy is a single heartbeat");
+    CHECK(statusled_blinks(LED_NODE_RADIO_DOWN) == 0,
+          "a node's fatal code reads the same way as a gateway's");
+    CHECK(statusled_blinks(LED_NODE_OK) == 1, "and so does its heartbeat");
+}
+
+/* ------------------------------------------------------- node's indicator */
+
+static statusled_node_input_t node_healthy(void)
+{
+    return (statusled_node_input_t){
+        .radio_up = true, .tx_ok = true, .heard_s = 5, .uptime_s = 3600,
+    };
+}
+
+static void test_node_led_reports_the_radio_worst_first(void)
+{
+    TEST("a node's indicator reports the worst radio fault first");
+    statusled_node_input_t in = node_healthy();
+    in.radio_up = false;
+    in.tx_ok = false;
+    in.heard_s = 0xFFFFFFFFu;
+    CHECK(statusled_evaluate_node(&in) == LED_NODE_RADIO_DOWN,
+          "a module that never answered outranks everything downstream of it");
+
+    in.radio_up = true;
+    CHECK(statusled_evaluate_node(&in) == LED_NODE_TX_FAILING,
+          "then a radio that came up but will not transmit");
+
+    in.tx_ok = true;
+    CHECK(statusled_evaluate_node(&in) == LED_NODE_NO_MESH,
+          "then transmitting into a field that never answers");
+
+    in.heard_s = 5;
+    CHECK(statusled_evaluate_node(&in) == LED_NODE_OK, "and then nothing is wrong");
+}
+
+static void test_node_led_tolerates_the_gap_between_syncs(void)
+{
+    TEST("a quiet non-relay node is not accused of losing the mesh");
+    /* A node that is not relaying may hear only the gateway's TIME_SYNC, and
+     * that is every 600 s. Holding it to the gateway's three minutes would
+     * have every healthy node in the field reporting a fault between syncs --
+     * which teaches whoever installed them to ignore the light. */
+    statusled_node_input_t in = node_healthy();
+    in.heard_s = STATUSLED_NODE_QUIET_S - 1;
+    CHECK(statusled_evaluate_node(&in) == LED_NODE_OK,
+          "silence shorter than one missed TIME_SYNC is normal");
+    in.heard_s = STATUSLED_NODE_QUIET_S;
+    CHECK(statusled_evaluate_node(&in) == LED_NODE_LINK_STALE,
+          "past a missed sync it is a fault");
+}
+
+static void test_node_led_settles_before_complaining(void)
+{
+    TEST("a just-booted node is not accused of having no mesh");
+    /*
+     * The first frame a node can expect to hear is the gateway's TIME_SYNC,
+     * and that is on a 600 s schedule. A node two minutes into its life has
+     * not failed to join anything -- it has not yet had the chance. Using the
+     * gateway's 120 s window here reported "no mesh" on a perfectly healthy
+     * link for the first eight minutes of every boot.
+     */
+    statusled_node_input_t in = node_healthy();
+    in.heard_s = 0xFFFFFFFFu;
+    in.uptime_s = 10;
+    CHECK(statusled_evaluate_node(&in) == LED_NODE_OK,
+          "nothing heard during the settling window is fine");
+    in.uptime_s = STATUSLED_SETTLE_S;
+    CHECK(statusled_evaluate_node(&in) == LED_NODE_OK,
+          "and the gateway's shorter window does not apply to a node");
+    in.uptime_s = STATUSLED_NODE_SETTLE_S;
+    CHECK(statusled_evaluate_node(&in) == LED_NODE_NO_MESH,
+          "past a whole TIME_SYNC period, having heard nothing is a fault");
+
+    /* The window has to outlast the gap it is waiting on, or it is just a
+     * slower false alarm. */
+    CHECK(STATUSLED_NODE_SETTLE_S > 600,
+          "the settle window covers a full TIME_SYNC interval");
+}
+
+static void test_node_led_separates_dead_radio_from_dead_link(void)
+{
+    TEST("a dead module and a dead antenna are different codes");
+    /* They have completely different causes -- SPI wiring versus the antenna
+     * or a sagging supply -- and folding them together would send somebody to
+     * check the wrong six things first. */
+    statusled_node_input_t in = node_healthy();
+    in.radio_up = false;
+    statusled_code_t dead = statusled_evaluate_node(&in);
+    in = node_healthy();
+    in.tx_ok = false;
+    statusled_code_t mute = statusled_evaluate_node(&in);
+    CHECK(dead != mute, "the two are distinguishable");
+    CHECK(statusled_blinks(dead) != statusled_blinks(mute),
+          "and distinguishable without a laptop");
+}
+
+static void test_led_amber_reads_as_amber(void)
+{
+    TEST("amber is mixed for the eye, not for the arithmetic");
+    /*
+     * A WS2812's green die is about twice as luminous as its red at the same
+     * drive, and the eye is near peak sensitivity at green and well down the
+     * curve at red. So "red plus half as much green" -- which looks like
+     * amber written down -- comes out perceptually even, which reads as
+     * yellow-green. At low brightness people call that green, and an
+     * indicator whose amber looks green reports the wrong severity.
+     *
+     * Green no more than a third of red is the bar. This is the test that
+     * would have caught it.
+     */
+    const statusled_code_t amber[] = {
+        LED_NO_MODEM, LED_NO_WIFI, LED_BACKEND_DOWN, LED_SPOOL_FILLING,
+        LED_NODE_NO_MESH, LED_NODE_LINK_STALE,
+    };
+    for (size_t i = 0; i < sizeof(amber) / sizeof(amber[0]); i++) {
+        statusled_rgb_t c = statusled_colour(amber[i]);
+        CHECK(c.r > 0 && c.b == 0, "amber is red and green only");
+        CHECK(c.g * 3 <= c.r, "and green stays under a third of red");
+    }
+
+    /* The red codes must carry no green at all, or they drift toward amber
+     * and the two severities stop being distinguishable. */
+    CHECK(statusled_colour(LED_RADIO_DOWN).g == 0, "red is pure red");
+    CHECK(statusled_colour(LED_NODE_RADIO_DOWN).g == 0, "on both boards");
+}
+
+/* ---------------------------------------------------------- RF link test */
+
+/* `echoed` of `sent` came back, all at the same signal levels. */
+static rftest_stats_t rf_run(uint16_t sent, uint16_t echoed,
+                             int8_t rssi_here, int8_t snr_here_x4,
+                             int8_t rssi_there, int8_t snr_there_x4)
+{
+    rftest_stats_t s;
+    rftest_begin(&s);
+    for (uint16_t i = 0; i < sent; i++) {
+        rftest_note_sent(&s);
+        if (i < echoed)
+            rftest_note_echo(&s, 300 + i, rssi_here, snr_here_x4,
+                             rssi_there, snr_there_x4);
+    }
+    return s;
+}
+
+static void test_rftest_loss(void)
+{
+    TEST("loss is counted against what was sent, not what came back");
+    rftest_stats_t s = rf_run(20, 20, -80, 20, -82, 20);
+    CHECK(rftest_loss_pct(&s) == 0, "a perfect run loses nothing");
+
+    s = rf_run(20, 10, -80, 20, -82, 20);
+    CHECK(rftest_loss_pct(&s) == 50, "half the echoes missing is 50%");
+
+    s = rf_run(20, 0, 0, 0, 0, 0);
+    CHECK(rftest_loss_pct(&s) == 100, "nothing back is total loss");
+
+    /* A test that never sent anything has proved nothing, and reporting 0%
+     * loss would read as a working link. */
+    rftest_begin(&s);
+    CHECK(rftest_loss_pct(&s) == 100, "no evidence is not evidence of a link");
+}
+
+static void test_rftest_no_link_is_its_own_verdict(void)
+{
+    TEST("a silent link is reported as no link, not as a bad one");
+    /* They send somebody to do different things: a bad link means move the
+     * antenna, no link at all means check the far end is even powered. */
+    rftest_stats_t s = rf_run(20, 0, 0, 0, 0, 0);
+    CHECK(rftest_verdict(&s) == RFTEST_NO_LINK, "nothing came back");
+    CHECK(rftest_verdict_text(RFTEST_NO_LINK)[0] != '\0', "and it says so");
+}
+
+static void test_rftest_the_worse_direction_decides(void)
+{
+    TEST("an asymmetric link is judged by its worse half");
+    /*
+     * The whole reason the echo carries the far end's RSSI. A node that is
+     * heard loudly by the gateway but cannot hear the gateway back is a node
+     * that will never receive a TIME_SYNC or a config -- and from the
+     * transmitting side it looks like an excellent link.
+     */
+    rftest_stats_t good_both = rf_run(20, 20, -70, 40, -70, 40);
+    CHECK(rftest_verdict(&good_both) == RFTEST_GOOD, "both directions strong");
+
+    rftest_stats_t deaf_inbound = rf_run(20, 20, -70, -40, -70, 40);
+    CHECK(rftest_verdict(&deaf_inbound) == RFTEST_MARGINAL,
+          "strong outbound does not rescue a deaf receiver");
+
+    rftest_stats_t deaf_outbound = rf_run(20, 20, -70, 40, -70, -40);
+    CHECK(rftest_verdict(&deaf_outbound) == RFTEST_MARGINAL,
+          "and the asymmetry is caught whichever way round it is");
+}
+
+static void test_rftest_a_mostly_working_link_is_not_good_enough(void)
+{
+    TEST("a link that drops one frame in ten is not a deployable link");
+    /* A node reports once a minute and an alert must arrive first time. At
+     * 10% loss an alert is dropped within the hour, so "mostly fine" is the
+     * wrong answer for this system even though it would pass for many. */
+    rftest_stats_t s = rf_run(20, 18, -70, 40, -70, 40);
+    CHECK(rftest_verdict(&s) == RFTEST_MARGINAL, "10% loss is marginal, not good");
+}
+
+static void test_rftest_report_mentions_both_directions(void)
+{
+    TEST("the report names both directions and never runs off its buffer");
+    rftest_stats_t s = rf_run(20, 20, -91, 12, -73, 8);
+    char buf[512];
+    rftest_format(&s, buf, sizeof(buf));
+    CHECK(strstr(buf, "us->them") != NULL, "says what they heard");
+    CHECK(strstr(buf, "them->us") != NULL, "and what we heard");
+    CHECK(strstr(buf, "-91") != NULL, "with the actual numbers");
+
+    /* Whatever else it does, it must not scribble past a short buffer: this
+     * runs on a device where that is a reboot, not a test failure. */
+    char tiny[8];
+    memset(tiny, 0x7F, sizeof(tiny));
+    rftest_format(&s, tiny, sizeof(tiny));
+    CHECK(tiny[sizeof(tiny) - 1] == '\0' || tiny[sizeof(tiny) - 1] == 0x7F,
+          "a short buffer is truncated, not overrun");
 }
 
 int main(void)
@@ -1062,6 +1289,20 @@ int main(void)
     test_led_settles_before_complaining();
     test_led_spool_depth();
     test_led_codes_are_distinguishable();
+    test_led_amber_reads_as_amber();
+
+    printf("\nnode indicator\n");
+    test_node_led_reports_the_radio_worst_first();
+    test_node_led_tolerates_the_gap_between_syncs();
+    test_node_led_settles_before_complaining();
+    test_node_led_separates_dead_radio_from_dead_link();
+
+    printf("\nRF link test\n");
+    test_rftest_loss();
+    test_rftest_no_link_is_its_own_verdict();
+    test_rftest_the_worse_direction_decides();
+    test_rftest_a_mostly_working_link_is_not_good_enough();
+    test_rftest_report_mentions_both_directions();
 
     printf("\ngateway rules\n");
     test_gateway_texts_on_a_critical_event();

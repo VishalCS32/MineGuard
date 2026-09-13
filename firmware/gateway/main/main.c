@@ -54,6 +54,7 @@
 #include "nodecfg.h"
 #include "sim800l.h"
 #include "spool.h"
+#include "rftest.h"
 #include "statusled.h"
 #include "subnet_proto.h"
 #include "report.h"
@@ -66,6 +67,20 @@ static const char *TAG = "gateway";
 
 #define UPLINK_INTERVAL_MS      5000     /* how often a batch is attempted     */
 #define TIME_SYNC_INTERVAL_S    600      /* nodes drift ~20 ppm between these  */
+/* How soon to try again when a sync could not go out -- no clock yet, or the
+ * radio was busy. Short, because until the first one lands no node in the
+ * field can sleep, align to a slot, or timestamp anything. */
+#define TIME_SYNC_RETRY_S         5
+/*
+ * How often the gateway announces itself while it has no clock. Frequent
+ * enough that a node hears one inside its settle window and reports the mesh
+ * as present; rare enough that it is not spending the field's airtime saying
+ * nothing. It stops as soon as NTP lands and the real TIME_SYNC takes over.
+ */
+#define BEACON_INTERVAL_S        60
+/* Floor between clock-on-demand syncs. One broadcast serves the whole field,
+ * so a field of clockless nodes needs one reply, not twenty-one. */
+#define URGENT_SYNC_GAP_S         5
 #define CONFIG_POLL_INTERVAL_MS 3000     /* one node per tick, HTTP only       */
 /* How often the decoded realtime document goes to the push endpoint, when one
  * is configured. Ten seconds is well inside a node's 60 s cadence, so nothing
@@ -112,6 +127,11 @@ static uint32_t now_epoch(void)
 
 /* -- radio ------------------------------------------------------------------ */
 
+/* Defined with the uplink task, below; called from the receive path when a
+ * node reports that it has no clock. */
+static bool broadcast_time_sync(void);
+static int64_t g_last_urgent_sync_us;
+
 static bool radio_send(const uint8_t *frame, size_t len)
 {
     if (!g_have_radio) return false;
@@ -128,6 +148,126 @@ static bool radio_send(const uint8_t *frame, size_t len)
 
     xSemaphoreGive(g_radio_lock);
     return err == ESP_OK;
+}
+
+/* -- RF link test ------------------------------------------------------------ */
+/*
+ * The gateway end of `rftest`. Same protocol as the node's, and it works in
+ * both directions: `rftest 0x0011` from here walks a link without anybody
+ * standing at the post, which is how you tell "that node is dead" from "that
+ * node cannot hear us any more".
+ *
+ * The test is state, not a loop that owns the radio: radio_task holds the
+ * receiver, so the console sends and then waits for radio_task to hand the
+ * echo over.
+ */
+static rftest_stats_t    g_rft;
+static volatile bool     g_rft_active;
+static volatile uint32_t g_rft_want;
+static volatile bool     g_rft_got;
+static volatile int8_t   g_rft_rssi_there, g_rft_snr_there;
+
+#define RF_POLL_MS  20
+
+static void rf_answer_ping(const subnet_frame_t *f)
+{
+    uint8_t pl[MESH_MAX_PAYLOAD];
+    uint16_t n = f->payload_len > sizeof(pl) ? (uint16_t)sizeof(pl) : f->payload_len;
+    if (n < sizeof(rf_test_t)) return;
+    memcpy(pl, f->payload, n);
+
+    rf_test_t r;
+    memcpy(&r, pl, sizeof(r));
+    r.rssi_dbm = g_radio.last_rssi_dbm;
+    r.snr_x4   = g_radio.last_snr_x4;
+    memcpy(pl, &r, sizeof(r));
+
+    uint8_t frame[SUBNET_MAX_FRAME];
+    size_t m = subnet_frame_build(frame, sizeof(frame), MSG_RF_PONG,
+                                  g_mesh.self_addr, f->src,
+                                  meshnet_next_seq(&g_mesh), MESH_DEFAULT_TTL, 0,
+                                  pl, n);
+    if (m) radio_send(frame, m);
+}
+
+static void rf_note_pong(const subnet_frame_t *f)
+{
+    if (!g_rft_active || f->payload_len < sizeof(rf_test_t)) return;
+    rf_test_t r;
+    memcpy(&r, f->payload, sizeof(r));
+    if (r.seq != g_rft_want) return;
+    g_rft_rssi_there = r.rssi_dbm;
+    g_rft_snr_there  = r.snr_x4;
+    g_rft_got = true;
+}
+
+/*
+ * True if this was a link-test frame, in which case it is finished with.
+ *
+ * Crucially it is NOT spooled. A ping proves the radio can carry a frame and
+ * carries no measurement; forwarding it to the backend would put rows in the
+ * system of record that mean nothing and that nothing knows how to decode.
+ */
+static bool rf_handle(const subnet_frame_t *f)
+{
+    if (f->type == MSG_RF_PING) { rf_answer_ping(f); return true; }
+    if (f->type == MSG_RF_PONG) { rf_note_pong(f);   return true; }
+    return false;
+}
+
+static bool rf_run_test(uint16_t dst, uint16_t count, uint8_t pad)
+{
+    if (!g_have_radio) return false;
+
+    rftest_begin(&g_rft);
+    g_rft_active = true;
+
+    for (uint16_t i = 1; i <= count; i++) {
+        uint8_t pl[MESH_MAX_PAYLOAD] = {0};
+        uint16_t plen = (uint16_t)(sizeof(rf_test_t) + pad);
+        uint32_t t0 = (uint32_t)(esp_timer_get_time() / 1000);
+
+        rf_test_t r = { .seq = i, .t_ms = t0, .rssi_dbm = 0, .snr_x4 = 0 };
+        memcpy(pl, &r, sizeof(r));
+
+        g_rft_want = i;
+        g_rft_got  = false;
+
+        uint8_t frame[SUBNET_MAX_FRAME];
+        size_t n = subnet_frame_build(frame, sizeof(frame), MSG_RF_PING,
+                                      g_mesh.self_addr, dst,
+                                      meshnet_next_seq(&g_mesh), MESH_DEFAULT_TTL, 0,
+                                      pl, plen);
+        if (!n || !radio_send(frame, n)) {
+            rftest_note_sent(&g_rft);
+            continue;
+        }
+        rftest_note_sent(&g_rft);
+
+        /* radio_task is the receiver here, so waiting means yielding to it. */
+        uint32_t waited = 0;
+        while (!g_rft_got && waited < RFTEST_TIMEOUT_MS) {
+            vTaskDelay(pdMS_TO_TICKS(RF_POLL_MS));
+            waited += RF_POLL_MS;
+        }
+        if (g_rft_got) {
+            uint32_t rtt = (uint32_t)(esp_timer_get_time() / 1000) - t0;
+            rftest_note_echo(&g_rft, rtt, g_radio.last_rssi_dbm, g_radio.last_snr_x4,
+                             g_rft_rssi_there, g_rft_snr_there);
+            printf("  %3u  %4lu ms  us->them %4d dBm  them->us %4d dBm\n",
+                   (unsigned)i, (unsigned long)rtt, g_rft_rssi_there,
+                   g_radio.last_rssi_dbm);
+        } else {
+            printf("  %3u  lost\n", (unsigned)i);
+        }
+    }
+
+    g_rft_active = false;
+
+    char report[512];
+    rftest_format(&g_rft, report, sizeof(report));
+    printf("%s\n", report);
+    return true;
 }
 
 /* -- downlink queue ---------------------------------------------------------- */
@@ -235,13 +375,20 @@ static void handle_frame(uint8_t *buf, uint16_t len)
     g_last_frame_ms = ms;
     statusled_note_frame();     /* one flick of the LED per frame received */
 
-    /* Everything gets written down, whatever it is and whatever else happens to
-     * it: the backend is the component that knows how to interpret frames, and
-     * the gateway's job is to make sure it eventually gets them all. */
+    /* Link-test frames are answered and dropped -- see rf_handle(). They are
+     * the one thing that must NOT reach the spool: they carry no measurement,
+     * and the backend has no reason to ever see them. */
+    if (rf_handle(&f)) return;
+
+    /* Everything else gets written down, whatever it is and whatever else
+     * happens to it: the backend is the component that knows how to interpret
+     * frames, and the gateway's job is to make sure it eventually gets them
+     * all. */
     spool_push(buf, (uint8_t)len);
 
     uint32_t now = now_epoch();
     char sms[GWRULES_SMS_LEN];
+    bool needs_clock = false;
 
     switch (f.type) {
     case MSG_EVENT: {
@@ -260,9 +407,22 @@ static void handle_frame(uint8_t *buf, uint16_t len)
         tlm_t t;
         memcpy(&t, f.payload, sizeof(t));
         fieldview_telemetry(f.src, &t);
+        /* A node stamping its telemetry with epoch 0 is telling us it has no
+         * clock. That is worth acting on immediately rather than at the next
+         * scheduled sync -- see the block after this switch. */
+        if (t.t_epoch == 0) needs_clock = true;
         if (gwrules_on_telemetry(&g_rules, f.src, &t, now ? now : (uint32_t)time(NULL),
                                  sms, sizeof(sms)))
             queue_sms(sms);
+        break;
+    }
+    case MSG_POSITION: {
+        /* Retained so the realtime push can say where each reading came from.
+         * It is still spooled to the backend as well -- this is a cache of
+         * the last fix, not a second system of record. */
+        pos_t p;
+        memcpy(&p, f.payload, sizeof(p));
+        fieldview_position(f.src, &p);
         break;
     }
     case MSG_CONFIG_ACK:
@@ -273,6 +433,37 @@ static void handle_frame(uint8_t *buf, uint16_t len)
         break;
     default:
         break;
+    }
+
+    /*
+     * A node that reported no clock gets one now, not in ten minutes.
+     *
+     * The scheduled broadcast alone is a trap, and the shape of it is worth
+     * recording. A node without a clock runs its GNSS receiver every cycle
+     * hunting for one, which costs 45 s of a 75 s cycle and leaves it
+     * listening for barely half the time. Against a 600 s broadcast that is
+     * a coin flip it can lose for many minutes -- and every loss keeps it
+     * clockless, which keeps the GNSS running, which keeps it deaf. The node
+     * is unable to sleep, align to a slot, or timestamp anything for the
+     * whole of it.
+     *
+     * The frame we just received breaks the circle: it is proof this node is
+     * awake, and a node transmits immediately before opening its receive
+     * window, so a reply now lands squarely inside it. Exactly the reasoning
+     * the downlink queue below already runs on.
+     *
+     * Rate-limited because a field of clockless nodes would otherwise each
+     * trigger a broadcast -- and one broadcast serves all of them.
+     */
+    if (needs_clock && uplink_time_valid()) {
+        int64_t since = esp_timer_get_time() - g_last_urgent_sync_us;
+        if (g_last_urgent_sync_us == 0 || since > (int64_t)URGENT_SYNC_GAP_S * 1000000) {
+            g_last_urgent_sync_us = esp_timer_get_time();
+            /* Let the node finish turning its radio around first. */
+            vTaskDelay(pdMS_TO_TICKS(60));
+            ESP_LOGI(TAG, "0x%04X has no clock; sending TIME_SYNC now", f.src);
+            broadcast_time_sync();
+        }
     }
 
     /* Whatever it was, this node is awake right now. */
@@ -306,23 +497,51 @@ static void radio_task(void *arg)
     }
 }
 
-static void broadcast_time_sync(void)
+/*
+ * The gateway's periodic broadcast: the field's clock when there is one, and
+ * a bare "I am here" when there is not.
+ *
+ * The beacon half matters more than it looks. Until this existed a gateway
+ * with no clock transmitted NOTHING -- TIME_SYNC was gated on the clock,
+ * downlinks need a backend, and frames addressed to the gateway are consumed
+ * rather than relayed. So a node with a flawless radio link heard silence,
+ * reported "no mesh", and there was no way to tell that from an antenna
+ * lying on the bench. Connectivity is not supposed to depend on NTP.
+ *
+ * It is a TIME_SYNC carrying epoch 0 rather than a new message type, because
+ * every node already rejects a timestamp before 2025 as "not a real one" --
+ * node_set_time() has guarded that since the beginning. So an old node
+ * ignores the time and still counts the frame as the mesh being alive, which
+ * is the entire point.
+ *
+ * Returns false if nothing went out, so the caller can come back soon rather
+ * than sleeping through the next ten minutes.
+ */
+static bool broadcast_time_sync(void)
 {
-    if (!uplink_time_valid()) return;
+    bool have_clock = uplink_time_valid();
 
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    timesync_t ts = {
-        .t_epoch = (uint32_t)tv.tv_sec,
-        .t_millis = (uint16_t)(tv.tv_usec / 1000),
-    };
+    timesync_t ts = {0};
+    if (have_clock) {
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        ts.t_epoch  = (uint32_t)tv.tv_sec;
+        ts.t_millis = (uint16_t)(tv.tv_usec / 1000);
+    }
     uint8_t frame[SUBNET_MAX_FRAME];
     size_t n = subnet_frame_build(frame, sizeof(frame), MSG_TIME_SYNC,
                                   ADDR_GATEWAY, ADDR_BROADCAST,
                                   meshnet_next_seq(&g_mesh), MESH_DEFAULT_TTL, 0,
                                   &ts, sizeof(ts));
-    if (n && radio_send(frame, n))
-        ESP_LOGI(TAG, "TIME_SYNC broadcast: %lu", (unsigned long)ts.t_epoch);
+    if (n && radio_send(frame, n)) {
+        if (have_clock)
+            ESP_LOGI(TAG, "TIME_SYNC broadcast: %lu", (unsigned long)ts.t_epoch);
+        else
+            ESP_LOGW(TAG, "presence beacon (no clock yet -- nodes can hear us "
+                          "but cannot timestamp or sleep until NTP lands)");
+        return true;
+    }
+    return false;
 }
 
 static void uplink_task(void *arg)
@@ -353,19 +572,50 @@ static void uplink_task(void *arg)
          * the frame path would be trading a warning for a dashboard.
          */
         if (g_cfg.push_url[0] && esp_timer_get_time() >= next_push_us) {
-            char *doc = report_push_document();
-            if (doc) {
-                uplink_push_json(doc);
+            /*
+             * One document per node, not one listing them all: the upstream
+             * schema is built around a single `node_id`, so a field of
+             * twenty-one posts is twenty-one POSTs. They are sent oldest
+             * slot first and a failure is not retried -- the next cycle is
+             * ten seconds away and carries fresher numbers than a retry
+             * would.
+             */
+            int sent = 0, failed = 0;
+            for (int i = 0; ; i++) {
+                char *doc = report_node_api_document(i);
+                if (!doc) break;
+                if (uplink_push_json(doc)) sent++; else failed++;
                 free(doc);
             }
+            if (failed)
+                ESP_LOGW(TAG, "realtime push: %d sent, %d failed", sent, failed);
             next_push_us = esp_timer_get_time() + (int64_t)PUSH_INTERVAL_MS * 1000;
         }
 
-        /* The field's clock, sent on a schedule rather than on demand: a node
-         * that missed the last one gets the next without having to ask. */
+        /*
+         * The field's clock, sent on a schedule rather than on demand: a node
+         * that missed the last one gets the next without having to ask.
+         *
+         * The schedule only advances on a sync that actually went out. It
+         * used to advance either way, which quietly cost ten minutes at every
+         * boot: the first pass runs before SNTP has answered, sends nothing,
+         * and then books the next attempt for TIME_SYNC_INTERVAL_S later --
+         * so a gateway whose clock arrived five seconds in still left the
+         * whole field without one until t+600 s. Every node sat awake, unable
+         * to align to a slot, reporting NO CLOCK, for ten minutes after a
+         * perfectly successful boot.
+         */
         if (esp_timer_get_time() >= next_sync_us) {
-            broadcast_time_sync();
-            next_sync_us = esp_timer_get_time() + (int64_t)TIME_SYNC_INTERVAL_S * 1000000;
+            bool had_clock = uplink_time_valid();
+            bool sent = broadcast_time_sync();
+            /* With a clock, the ten-minute schedule. Without one, the beacon
+             * runs fast: it is the only thing telling the field the gateway
+             * exists, and a node deciding it has no mesh is the cost of it
+             * being slow. A send that failed outright retries sooner still. */
+            uint32_t next_s = !sent      ? TIME_SYNC_RETRY_S
+                            : had_clock  ? TIME_SYNC_INTERVAL_S
+                                         : BEACON_INTERVAL_S;
+            next_sync_us = esp_timer_get_time() + (int64_t)next_s * 1000000;
         }
 
         /* With no broker there is nobody to push a config down, so the gateway
@@ -476,6 +726,14 @@ static void init_radio(void)
                       "whatever is already spooled, and nothing else");
 }
 
+static bool modem_probe(void)
+{
+    /* Runs even when init failed -- that is precisely when it is wanted. The
+     * UART is configured by sim800l_init() before it ever waits for AT, so
+     * the port exists whether or not the modem answered on it. */
+    return sim800l_probe(&g_modem) != 0;
+}
+
 static void init_modem(void)
 {
     sim800l_cfg_t mc = {
@@ -522,8 +780,15 @@ void app_main(void)
 
     /* The indicator, before the tasks: it is the only thing that reports a
      * failure to somebody who is standing next to the box rather than looking
-     * at a screen, so it should be running before anything can fail. */
-    statusled_start(PIN_STATUS_LED, false, led_source);
+     * at a screen, so it should be running before anything can fail.
+     *
+     * The onboard RGB pixel, on GPIO21 unless this is one of the other S3
+     * boards that put it elsewhere and somebody has said so with
+     * `set led-pin`. */
+    statusled_set_order(g_cfg.led_order_rgb ? STATUSLED_ORDER_RGB
+                                            : STATUSLED_ORDER_GRB);
+    statusled_start(g_cfg.led_gpio ? (gpio_num_t)g_cfg.led_gpio : PIN_RGB_LED,
+                    led_source);
 
     /* The on-site UI. Started last, so by the time a phone can reach it every
      * counter it displays is real. */
@@ -531,7 +796,9 @@ void app_main(void)
     const webui_hooks_t hooks = { .test_sms = webui_test_sms };
     webui_start(&g_cfg, &hooks);
 
-    nodecfg_cli_start(&g_cfg);
+    const nodecfg_hooks_t cli_hooks = { .rftest = rf_run_test,
+                                        .modemtest = modem_probe };
+    nodecfg_cli_start(&g_cfg, &cli_hooks);
     nodecfg_print(&g_cfg);
 
     /* Priorities in the order things must not be missed: a frame arrives once

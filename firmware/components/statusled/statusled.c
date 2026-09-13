@@ -38,10 +38,17 @@ static const char *TAG = "statusled";
 #define FATAL_HALF_MS    100     /* continuous fast flash, unmistakable   */
 #define FLICK_MS          25     /* one received frame                    */
 #define FLICK_MIN_GAP_MS 250     /* or a busy field would hold it solid   */
+#define SELFTEST_MS      300     /* each leg of the boot colour sweep     */
+#define SELFTEST          32     /* brighter than any status: it is meant
+                                  * to be seen once, in daylight, by
+                                  * somebody with the lid still open     */
 
 static rmt_channel_handle_t s_chan;
 static rmt_encoder_handle_t s_encoder;
+static gpio_num_t           s_pin = GPIO_NUM_NC;
+static statusled_order_t    s_order = STATUSLED_ORDER_GRB;
 static statusled_source_fn  s_source;
+static statusled_code_fn    s_code_source;
 static statusled_code_t     s_code = LED_OK;
 static volatile bool        s_frame_pending;
 static int64_t              s_last_flick_us;
@@ -51,8 +58,14 @@ static void pixel(statusled_rgb_t c)
     if (!s_chan) return;
 
     /* Green, red, blue -- a WS2812 wants GRB, and getting it wrong gives an
-     * indicator that is confidently the wrong colour. */
-    const uint8_t bytes[3] = { c.g, c.r, c.b };
+     * indicator that is confidently the wrong colour rather than a dark one,
+     * which is the worst way for a diagnostic to fail. */
+    uint8_t bytes[3];
+    if (s_order == STATUSLED_ORDER_RGB) {
+        bytes[0] = c.r; bytes[1] = c.g; bytes[2] = c.b;
+    } else {
+        bytes[0] = c.g; bytes[1] = c.r; bytes[2] = c.b;
+    }
     rmt_symbol_word_t symbols[24];
 
     for (int i = 0; i < 3; i++) {
@@ -97,21 +110,52 @@ static void idle_for(uint32_t ms)
     }
 }
 
+/*
+ * Red, green, blue, off -- once, at boot, about a second in total.
+ *
+ * Two questions it answers that nothing else can. First, a healthy gateway's
+ * indicator is dark 98% of the time, so "no light" and "wrong pin" look
+ * identical to somebody standing in front of a new install; the sweep
+ * separates them before anyone starts unscrewing the lid. Second, it proves
+ * the byte order: this driver sends GRB, and a pixel that wants RGB will show
+ * this sweep as green, red, blue.
+ */
+static void self_test(void)
+{
+    static const statusled_rgb_t sweep[] = {
+        { SELFTEST, 0, 0 }, { 0, SELFTEST, 0 }, { 0, 0, SELFTEST },
+    };
+    for (size_t i = 0; i < sizeof(sweep) / sizeof(sweep[0]); i++) {
+        pixel(sweep[i]);
+        vTaskDelay(pdMS_TO_TICKS(SELFTEST_MS));
+    }
+    off();
+}
+
 static void led_task(void *arg)
 {
     (void)arg;
     statusled_code_t last_logged = LED_CODE_COUNT;
 
+    /* From the task, not from statusled_start(): a second of colour is worth
+     * having, and it is not worth a second of app_main -- the radio should be
+     * listening before the indicator has finished introducing itself. */
+    self_test();
+
     for (;;) {
-        statusled_input_t in = {0};
-        if (s_source) s_source(&in);
-        s_code = statusled_evaluate(&in);
+        if (s_code_source) {
+            s_code = s_code_source();
+        } else {
+            statusled_input_t in = {0};
+            if (s_source) s_source(&in);
+            s_code = statusled_evaluate(&in);
+        }
         statusled_rgb_t colour = statusled_colour(s_code);
 
         /* Log transitions, not states: the console should record the moment a
          * gateway went wrong, not repeat every two seconds that it still is. */
         if (s_code != last_logged) {
-            if (s_code == LED_OK)
+            if (s_code == LED_OK || s_code == LED_NODE_OK)
                 ESP_LOGI(TAG, "%s -- %s", statusled_tag(s_code), statusled_meaning(s_code));
             else
                 ESP_LOGW(TAG, "%s (%u blinks) -- %s", statusled_tag(s_code),
@@ -119,7 +163,7 @@ static void led_task(void *arg)
             last_logged = s_code;
         }
 
-        if (s_code == LED_RADIO_DOWN) {
+        if (s_code == LED_RADIO_DOWN || s_code == LED_NODE_RADIO_DOWN) {
             /* Not counted: it should read as "broken" from across the yard. */
             for (int i = 0; i < 10; i++) {
                 pixel(colour); vTaskDelay(pdMS_TO_TICKS(FATAL_HALF_MS));
@@ -128,7 +172,7 @@ static void led_task(void *arg)
             continue;
         }
 
-        if (s_code == LED_OK) {
+        if (s_code == LED_OK || s_code == LED_NODE_OK) {
             pixel(colour);
             vTaskDelay(pdMS_TO_TICKS(OK_FLASH_MS));
             off();
@@ -145,9 +189,18 @@ static void led_task(void *arg)
     }
 }
 
-esp_err_t statusled_start(gpio_num_t pin, statusled_source_fn source)
+void statusled_set_order(statusled_order_t order)
 {
-    s_source = source;
+    s_order = order;
+}
+
+static esp_err_t statusled_begin(gpio_num_t pin)
+{
+    if (!GPIO_IS_VALID_OUTPUT_GPIO(pin)) {
+        ESP_LOGE(TAG, "GPIO%d cannot drive the indicator; running blind",
+                 (int)pin);
+        return ESP_ERR_INVALID_ARG;
+    }
 
     rmt_tx_channel_config_t chan_cfg = {
         .clk_src = RMT_CLK_SRC_DEFAULT,
@@ -163,14 +216,17 @@ esp_err_t statusled_start(gpio_num_t pin, statusled_source_fn source)
     }
 
     /* A copy encoder: the symbols are built above exactly as the pixel wants
-     * them, so nothing needs encoding on the way out. */
-    rmt_copy_encoder_config_t enc_cfg = {0};
+     * them, so nothing needs encoding on the way out. The config carries no
+     * fields at all, hence the empty braces -- `{0}` is one element too many
+     * for it and the compiler says so. */
+    rmt_copy_encoder_config_t enc_cfg = {};
     err = rmt_new_copy_encoder(&enc_cfg, &s_encoder);
     if (err != ESP_OK) return err;
 
     err = rmt_enable(s_chan);
     if (err != ESP_OK) return err;
 
+    s_pin = pin;
     off();
 
     /* Lowest priority in the system. An indicator must never be the reason a
@@ -179,8 +235,28 @@ esp_err_t statusled_start(gpio_num_t pin, statusled_source_fn source)
         ESP_LOGE(TAG, "could not start the indicator task");
         return ESP_ERR_NO_MEM;
     }
-    ESP_LOGI(TAG, "onboard NeoPixel on GPIO%d", (int)pin);
+    ESP_LOGI(TAG, "onboard RGB pixel on GPIO%d, %s -- red/green/blue sweep at "
+                  "boot. Dark: try `set led-pin 48` (or 47, 38, 8). Sweep came "
+                  "out green/red/blue: `set led-order rgb`. Then save and reboot",
+             (int)pin, s_order == STATUSLED_ORDER_RGB ? "RGB" : "GRB");
     return ESP_OK;
+}
+
+esp_err_t statusled_start(gpio_num_t pin, statusled_source_fn source)
+{
+    s_source = source;
+    return statusled_begin(pin);
+}
+
+esp_err_t statusled_start_code(gpio_num_t pin, statusled_code_fn source)
+{
+    s_code_source = source;
+    return statusled_begin(pin);
+}
+
+gpio_num_t statusled_pin(void)
+{
+    return s_pin;
 }
 
 void statusled_note_frame(void)

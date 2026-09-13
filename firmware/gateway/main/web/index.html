@@ -32,6 +32,10 @@ h1 small{color:var(--dim);font-weight:400;font-size:13px}
 .chip.ok{color:var(--ok);border-color:var(--ok)}
 .chip.warn{color:var(--warn);border-color:var(--warn)}
 .chip.bad{color:var(--bad);border-color:var(--bad)}
+/* The pixel's own colour, next to the blink count: the page and the box then
+   say the same thing in the same two channels. */
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+     margin-right:5px;vertical-align:middle}
 main{padding:16px;max-width:1100px;margin:0 auto}
 .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
@@ -237,7 +241,11 @@ async function refreshStatus(){
     const cls = s.led.code === 'ok' ? 'ok'
               : (s.led.code === 'radio_down' || s.led.code === 'field_silent') ? 'bad' : 'warn';
     const shape = s.led.blinks ? s.led.blinks + '\u00d7 blink' : 'fast flash';
-    chips.push(chip('LED ' + shape, cls));
+    // Only a literal hex triple from our own firmware ever reaches the style
+    // attribute -- chip() builds HTML by concatenation and does not escape.
+    const hex = /^#[0-9a-f]{6}$/.test(s.led.colour || '') ? s.led.colour : '';
+    const dot = hex ? '<span class="dot" style="background:' + hex + '"></span>' : '';
+    chips.push(chip(dot + 'LED ' + shape, cls));
     $('ledmeaning').textContent = s.led.code === 'ok' ? '' : s.led.meaning;
   }
   if (!s.spool.backing.startsWith('micro'))

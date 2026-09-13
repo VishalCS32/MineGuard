@@ -13,7 +13,7 @@ of sensor nodes over the mine panel.
  E220-900M22S (LLCC68, SPI)       local rule engine        field reconstruction
                                   on-site web UI (own AP)
                                   realtime JSON push
-                                  status LED + on-box diagnostics
+                                  onboard RGB status LED
         ◄────────────── config downlink ──────────────────────┘
 ```
 

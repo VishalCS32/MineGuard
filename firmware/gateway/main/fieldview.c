@@ -55,6 +55,23 @@ void fieldview_heard(uint16_t addr, int8_t rssi, uint8_t snr, uint8_t hops,
     xSemaphoreGive(s_lock);
 }
 
+void fieldview_position(uint16_t addr, const pos_t *p)
+{
+    /* A 2-D fix has no altitude and an accuracy of zero means the receiver
+     * declined to estimate one. Neither is a position worth remembering, and
+     * keeping it would overwrite a good fix with a worse one. */
+    if (GNSS_FIX_OF(p->gnss_status) < GNSS_FIX_3D || p->h_acc_cm == 0) return;
+
+    xSemaphoreTake(s_lock, portMAX_DELAY);
+    fieldview_node_t *n = slot_for(addr);
+    n->have_pos = true;
+    n->lat_e7   = p->lat_e7;
+    n->lon_e7   = p->lon_e7;
+    n->alt_m    = p->alt_m;
+    n->h_acc_cm = p->h_acc_cm;
+    xSemaphoreGive(s_lock);
+}
+
 void fieldview_telemetry(uint16_t addr, const tlm_t *t)
 {
     xSemaphoreTake(s_lock, portMAX_DELAY);

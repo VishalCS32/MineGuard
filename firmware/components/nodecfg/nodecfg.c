@@ -37,7 +37,8 @@ static void defaults(nodecfg_t *c)
         .tilt_offset_pitch      = 0,
         .tilt_offset_roll       = 0,
         .flags = CFG_FLAG_RELAY_ENABLED | CFG_FLAG_GNSS_ENABLED |
-                 CFG_FLAG_VIB_ENABLED   | CFG_FLAG_DEEP_SLEEP,
+                 CFG_FLAG_VIB_ENABLED   | CFG_FLAG_DEEP_SLEEP |
+                 CFG_FLAG_LED_ENABLED,
         .cfg_hash = 0,
     };
     c->cfg.cfg_hash = subnet_cfg_hash(&c->cfg);
@@ -119,6 +120,8 @@ void nodecfg_load(nodecfg_t *out)
     get_str(h, "site",      out->site_slug, sizeof(out->site_slug));
     get_str(h, "gw_id",     out->gateway_id, sizeof(out->gateway_id));
     get_str(h, "sms",       out->sms_recipients, sizeof(out->sms_recipients));
+    if (nvs_get_u8(h, "led_gpio", &u8) == ESP_OK) out->led_gpio = u8;
+    if (nvs_get_u8(h, "led_order", &u8) == ESP_OK) out->led_order_rgb = u8;
     nvs_close(h);
 
     if (!out->provisioned) {
@@ -146,6 +149,8 @@ bool nodecfg_save(const nodecfg_t *c)
            && nvs_set_str(h, "site", c->site_slug) == ESP_OK
            && nvs_set_str(h, "gw_id", c->gateway_id) == ESP_OK
            && nvs_set_str(h, "sms", c->sms_recipients) == ESP_OK
+           && nvs_set_u8(h, "led_gpio", c->led_gpio) == ESP_OK
+           && nvs_set_u8(h, "led_order", c->led_order_rgb) == ESP_OK
            && nvs_commit(h) == ESP_OK;
 
     nvs_close(h);
@@ -206,11 +211,12 @@ void nodecfg_print(const nodecfg_t *c)
     printf("  vib alert   %u mg\n", c->cfg.vib_alert_mg);
     printf("  offsets     pitch %d roll %d mdeg\n",
            c->cfg.tilt_offset_pitch, c->cfg.tilt_offset_roll);
-    printf("  flags       0x%02X [%s%s%s%s]\n", c->cfg.flags,
+    printf("  flags       0x%02X [%s%s%s%s%s]\n", c->cfg.flags,
            (c->cfg.flags & CFG_FLAG_RELAY_ENABLED) ? "relay " : "",
            (c->cfg.flags & CFG_FLAG_GNSS_ENABLED)  ? "gnss "  : "",
            (c->cfg.flags & CFG_FLAG_VIB_ENABLED)   ? "vib "   : "",
-           (c->cfg.flags & CFG_FLAG_DEEP_SLEEP)    ? "sleep"  : "always-on");
+           (c->cfg.flags & CFG_FLAG_DEEP_SLEEP)    ? "sleep"  : "always-on",
+           (c->cfg.flags & CFG_FLAG_LED_ENABLED)   ? " led"   : "");
     if (c->role == NODE_ROLE_GATEWAY) {
         printf("-- gateway ---------------------------------------------------\n");
         printf("  wifi        %s\n", c->wifi_ssid[0] ? c->wifi_ssid : "(unset)");
@@ -220,6 +226,9 @@ void nodecfg_print(const nodecfg_t *c)
         printf("  site        %s\n", c->site_slug);
         printf("  gateway id  %s\n", c->gateway_id);
         printf("  sms to      %s\n", c->sms_recipients[0] ? c->sms_recipients : "(none)");
+        if (c->led_gpio) printf("  led pin     GPIO%u\n", c->led_gpio);
+        else             printf("  led pin     board default\n");
+        printf("  led order   %s\n", c->led_order_rgb ? "RGB" : "GRB");
         printf("  ap password %s\n",
                strcmp(c->ap_pass, "mineguard") ? "(set)" : "mineguard  <-- CHANGE THIS");
     }
