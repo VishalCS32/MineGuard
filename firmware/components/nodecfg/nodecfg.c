@@ -123,6 +123,8 @@ void nodecfg_load(nodecfg_t *out)
     get_str(h, "sms",       out->sms_recipients, sizeof(out->sms_recipients));
     if (nvs_get_u8(h, "led_gpio", &u8) == ESP_OK) out->led_gpio = u8;
     if (nvs_get_u8(h, "led_order", &u8) == ESP_OK) out->led_order_rgb = u8;
+    size_t asz = sizeof(out->aliases);
+    nvs_get_blob(h, "aliases", out->aliases, &asz);   /* absent = none set */
     nvs_close(h);
 
     if (!out->provisioned) {
@@ -153,12 +155,49 @@ bool nodecfg_save(const nodecfg_t *c)
            && nvs_set_str(h, "sms", c->sms_recipients) == ESP_OK
            && nvs_set_u8(h, "led_gpio", c->led_gpio) == ESP_OK
            && nvs_set_u8(h, "led_order", c->led_order_rgb) == ESP_OK
+           && nvs_set_blob(h, "aliases", c->aliases, sizeof(c->aliases)) == ESP_OK
            && nvs_commit(h) == ESP_OK;
 
     nvs_close(h);
     if (ok) ESP_LOGI(TAG, "saved: addr=0x%04X role=%s label=%s",
                      c->addr, c->role == NODE_ROLE_GATEWAY ? "gateway" : "node", c->label);
     return ok;
+}
+
+const char *nodecfg_alias(const nodecfg_t *c, uint16_t addr)
+{
+    for (int i = 0; i < NODECFG_MAX_ALIASES; i++)
+        if (c->aliases[i].addr == addr && c->aliases[i].name[0])
+            return c->aliases[i].name;
+    return NULL;
+}
+
+bool nodecfg_set_alias(nodecfg_t *c, uint16_t addr, const char *name)
+{
+    bool clearing = !name || !name[0];
+
+    /* Replace in place if this address already has a name, so setting one
+     * twice does not quietly consume two slots and then report the table
+     * full on a field of twelve. */
+    for (int i = 0; i < NODECFG_MAX_ALIASES; i++) {
+        if (c->aliases[i].addr != addr) continue;
+        if (clearing) {
+            c->aliases[i].addr = 0;
+            c->aliases[i].name[0] = '\0';
+        } else {
+            snprintf(c->aliases[i].name, sizeof(c->aliases[i].name), "%s", name);
+        }
+        return true;
+    }
+    if (clearing) return true;          /* nothing to clear is not a failure */
+
+    for (int i = 0; i < NODECFG_MAX_ALIASES; i++) {
+        if (c->aliases[i].addr) continue;
+        c->aliases[i].addr = addr;
+        snprintf(c->aliases[i].name, sizeof(c->aliases[i].name), "%s", name);
+        return true;
+    }
+    return false;
 }
 
 bool nodecfg_factory_reset(void)
@@ -229,6 +268,13 @@ void nodecfg_print(const nodecfg_t *c)
          * trackers, and a bearer token is the one field here that is worth
          * stealing on its own. */
         printf("  push token  %s\n", c->push_token[0] ? "(set)" : "(none)");
+        int n_alias = 0;
+        for (int i = 0; i < NODECFG_MAX_ALIASES; i++)
+            if (c->aliases[i].addr && c->aliases[i].name[0]) {
+                if (!n_alias++) printf("  node names\n");
+                printf("    0x%04X -> %s\n", c->aliases[i].addr, c->aliases[i].name);
+            }
+        if (!n_alias) printf("  node names  (none; pushed as NODE-<addr>)\n");
         printf("  site        %s\n", c->site_slug);
         printf("  gateway id  %s\n", c->gateway_id);
         printf("  sms to      %s\n", c->sms_recipients[0] ? c->sms_recipients : "(none)");

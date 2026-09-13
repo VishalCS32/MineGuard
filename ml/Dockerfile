@@ -9,6 +9,6 @@ RUN pip install --no-cache-dir -r requirements.txt /opt/subnet-proto
 
 COPY ml/ .
 
-# Default role: drive the stack with physics-backed frames over the real
-# protocol, so the whole system can be demonstrated without hardware.
-CMD ["python", "-m", "simulator.virtual_gateway", "--api", "http://api:8000"]
+# The simulator remains a separate development command. This container serves
+# telemetry-derived ML predictions to the backend.
+CMD ["uvicorn", "service.app:app", "--host", "0.0.0.0", "--port", "8100"]

@@ -182,10 +182,19 @@ char *report_node_api_document(int index)
 
     cJSON *root = cJSON_CreateObject();
 
-    /* Stable and derived from the address, so a node keeps its identity
-     * across a relabelling and two gateways cannot disagree about it. */
+    /*
+     * The operator's name for this node if one is set, else the address.
+     *
+     * The address-derived form is the better identity -- unique, stable, and
+     * the same thing the frame backend calls the node -- but it is not what
+     * anything downstream was written against, and renumbering an installed
+     * field to satisfy a dashboard is the wrong way round. See
+     * `set node-alias`.
+     */
     char node_id[16];
-    snprintf(node_id, sizeof(node_id), "NODE-%04X", n.addr);
+    const char *alias = nodecfg_alias(s_cfg, n.addr);
+    if (alias) snprintf(node_id, sizeof(node_id), "%s", alias);
+    else       snprintf(node_id, sizeof(node_id), "NODE-%04X", n.addr);
     cJSON_AddStringToObject(root, "node_id", node_id);
 
     /* The node's own clock where it had one. A node that has never had a

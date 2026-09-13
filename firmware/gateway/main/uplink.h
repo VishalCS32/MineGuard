@@ -90,6 +90,30 @@ bool uplink_send_batch(const spool_batch_t *batch);
  */
 bool uplink_poll_config(uint16_t addr);
 
+/*
+ * Ask the backend whether it is there, without having anything to send.
+ *
+ * The uplink only touches the backend when the spool has frames in it, so a
+ * gateway that has not yet heard a node never contacts it at all -- and the
+ * "backend unreachable" indicator then reports the state it booted in rather
+ * than anything measured. It reads identically whether the backend is
+ * perfect or switched off, which is the one thing a health indicator must
+ * never do.
+ *
+ * A GET of /api/health costs almost nothing and makes that indicator mean
+ * something on a gateway with no field yet -- which is exactly the gateway
+ * somebody is standing in front of, wondering why it says unreachable.
+ */
+bool uplink_probe_backend(void);
+
+/*
+ * True if the realtime push has succeeded recently enough to call the link
+ * healthy. In push-only operation this replaces the backend probe: the push
+ * is the only thing leaving the gateway, so it is the honest thing to judge
+ * the link by.
+ */
+bool uplink_push_ok_recently(void);
+
 /* Counters, printed by the console's `show`. */
 void uplink_stats(uint32_t *posted, uint32_t *failures, uint32_t *downlinks);
 

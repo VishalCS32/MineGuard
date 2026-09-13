@@ -31,6 +31,8 @@
  * are not shy: Render's are 40+ characters and Railway's longer. Sized so a
  * token is never silently truncated into one that will simply 401. */
 #define NODECFG_TOKEN_LEN 128
+/* One per node in a full field, plus a couple of spares. */
+#define NODECFG_MAX_ALIASES 24
 
 typedef enum {
     NODE_ROLE_NODE = 0,
@@ -82,7 +84,32 @@ typedef struct {
      * are not. Wrong order swaps red and green, which is worse than a dark
      * pixel: the indicator confidently reports the wrong severity. */
     uint8_t     led_order_rgb;
+
+    /*
+     * Display names for nodes, for the realtime push only.
+     *
+     * A mesh address is the right identity on the wire -- short, unique,
+     * assigned at commissioning -- and the wrong one everywhere else: nobody
+     * walking a panel calls a post "0x0030". This maps one to the other on
+     * the gateway, so the name a dashboard shows can be chosen without
+     * touching the protocol, reflashing a node, or renumbering a field that
+     * is already installed.
+     *
+     * Gateway-side on purpose. The node does not need to know what it is
+     * called, and one place to edit beats twenty-one.
+     */
+    struct {
+        uint16_t addr;                          /* 0 = free slot            */
+        char     name[NODECFG_LABEL_LEN];
+    } aliases[NODECFG_MAX_ALIASES];
 } nodecfg_t;
+
+/* The display name for `addr`, or NULL if none is set. */
+const char *nodecfg_alias(const nodecfg_t *cfg, uint16_t addr);
+
+/* Set (or with a NULL/empty name, clear) an alias. False if the table is
+ * full, which is the only way this can fail. */
+bool nodecfg_set_alias(nodecfg_t *cfg, uint16_t addr, const char *name);
 
 /* Load from NVS, filling anything unset with defaults. Never fails: a board with
  * a corrupt or empty NVS boots with defaults and says so, because a node that
@@ -128,6 +155,8 @@ void nodecfg_print(const nodecfg_t *cfg);
  *   set ap-pass <8+ chars>     gateway only; guards the on-site web UI
  *   set push https://host/hook gateway only; realtime JSON push, '-' clears
  *   set push-token <tok|->     gateway only; bearer token for that endpoint
+ *   set node-alias 0x0030 NODE-001   display name for a node in the push
+ *   set node-alias 0x0030 -          clear it
  *   set site jharia
  *   set sms +911234567890,+919876543210
  *   set led-pin 21            gateway only; onboard RGB pixel, '-' = default

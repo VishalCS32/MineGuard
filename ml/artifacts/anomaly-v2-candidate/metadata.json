@@ -1,0 +1,128 @@
+{
+  "model_version": "mineguard-anomaly-iforest-v2",
+  "model_type": "IsolationForest",
+  "created_at": "2026-09-09T16:23:49.021543+00:00",
+  "dataset_version": "offline-telemetry-v2",
+  "synthetic_training_data": true,
+  "feature_names": [
+    "tilt_deg",
+    "robust_tilt_rate_deg_per_hour",
+    "vibration_rms_mg",
+    "vibration_peak_hz",
+    "temperature_c",
+    "history_count",
+    "temporal_span_hours",
+    "temporal_std_tilt_deg"
+  ],
+  "minimum_history_count": 9,
+  "train_fraction": 0.5,
+  "validation_fraction": 0.15,
+  "test_fraction": 0.35,
+  "train_rows": 2416,
+  "validation_rows": 756,
+  "test_rows": 1764,
+  "threshold": 0.035641923770149825,
+  "score_upper": 0.17446797988388266,
+  "metrics": {
+    "train": {
+      "samples": 2436,
+      "normal_count": 2416,
+      "anomaly_count": 20,
+      "predicted_anomaly_count": 140,
+      "precision": 0.1357142857142857,
+      "recall": 0.95,
+      "f1": 0.2375,
+      "false_alarm_rate": 0.05008278145695364,
+      "confusion_matrix": [
+        [
+          2295,
+          121
+        ],
+        [
+          1,
+          19
+        ]
+      ],
+      "by_label": {
+        "normal": {
+          "samples": 2416,
+          "predicted_anomaly_count": 121
+        },
+        "physical_deformation": {
+          "samples": 20,
+          "predicted_anomaly_count": 19
+        }
+      }
+    },
+    "validation": {
+      "samples": 756,
+      "normal_count": 688,
+      "anomaly_count": 68,
+      "predicted_anomaly_count": 83,
+      "precision": 0.7710843373493976,
+      "recall": 0.9411764705882353,
+      "f1": 0.847682119205298,
+      "false_alarm_rate": 0.027616279069767442,
+      "confusion_matrix": [
+        [
+          669,
+          19
+        ],
+        [
+          4,
+          64
+        ]
+      ],
+      "by_label": {
+        "normal": {
+          "samples": 688,
+          "predicted_anomaly_count": 19
+        },
+        "physical_deformation": {
+          "samples": 68,
+          "predicted_anomaly_count": 64
+        }
+      }
+    },
+    "test": {
+      "samples": 1764,
+      "normal_count": 1565,
+      "anomaly_count": 199,
+      "predicted_anomaly_count": 218,
+      "precision": 0.7339449541284404,
+      "recall": 0.8040201005025126,
+      "f1": 0.7673860911270983,
+      "false_alarm_rate": 0.03706070287539936,
+      "confusion_matrix": [
+        [
+          1507,
+          58
+        ],
+        [
+          39,
+          160
+        ]
+      ],
+      "by_label": {
+        "normal": {
+          "samples": 1565,
+          "predicted_anomaly_count": 58
+        },
+        "physical_deformation": {
+          "samples": 160,
+          "predicted_anomaly_count": 160
+        },
+        "sensor_anomaly": {
+          "samples": 39,
+          "predicted_anomaly_count": 0
+        }
+      }
+    }
+  },
+  "parameters": {
+    "n_estimators": 150,
+    "contamination": "auto",
+    "random_state": 42,
+    "max_samples": "auto"
+  }
+}

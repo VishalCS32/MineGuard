@@ -81,6 +81,10 @@ static const char *TAG = "gateway";
 /* Floor between clock-on-demand syncs. One broadcast serves the whole field,
  * so a field of clockless nodes needs one reply, not twenty-one. */
 #define URGENT_SYNC_GAP_S         5
+/* How often to ask an otherwise-idle backend whether it is alive. Frequent
+ * enough that the indicator is current, rare enough to be invisible next to
+ * a node reporting every minute. */
+#define BACKEND_PROBE_S          30
 #define CONFIG_POLL_INTERVAL_MS 3000     /* one node per tick, HTTP only       */
 /* How often the decoded realtime document goes to the push endpoint, when one
  * is configured. Ten seconds is well inside a node's 60 s cadence, so nothing
@@ -547,13 +551,39 @@ static bool broadcast_time_sync(void)
 static void uplink_task(void *arg)
 {
     (void)arg;
-    int64_t next_sync_us = 0, next_push_us = 0;
+    int64_t next_sync_us = 0, next_push_us = 0, next_probe_us = 0;
     int poll_cursor = 0;
 
     for (;;) {
+        /*
+         * Push-only operation: no api_url configured.
+         *
+         * The frame path is the system of record and the realtime push is a
+         * convenience feed -- but a site can legitimately run with only the
+         * second, and this gateway does when `api_url` is empty. Two things
+         * then have to change, or the gateway spends its life reporting
+         * problems it was told not to have:
+         *
+         *   The spool must be drained, not filled. Frames are consumed as
+         *   they are pushed rather than held for a backend that is never
+         *   coming, otherwise it fills, starts shedding, and reports a
+         *   deepening backlog as a fault for ever.
+         *
+         *   The backend cannot be "down". It is absent by configuration, and
+         *   an indicator that reports a deliberate choice as a failure is an
+         *   indicator people learn to ignore -- which costs you the ones
+         *   that matter.
+         */
+        bool push_only = (g_cfg.push_url[0] && !g_cfg.api_url[0]);
+
         spool_batch_t batch;
         if (spool_peek(&batch) > 0) {
-            if (uplink_send_batch(&batch)) {
+            if (push_only) {
+                /* Nothing to post them to. The reading has already left via
+                 * the push; holding the frame as well would only overflow. */
+                spool_consume(batch.count);
+                gwrules_note_uplink_ok(&g_rules, (uint32_t)time(NULL));
+            } else if (uplink_send_batch(&batch)) {
                 spool_consume(batch.count);
                 gwrules_note_uplink_ok(&g_rules, (uint32_t)time(NULL));
             } else {
@@ -593,6 +623,32 @@ static void uplink_task(void *arg)
         }
 
         /*
+         * Ask the backend if it is there, when we have had nothing to tell it.
+         *
+         * Without this the "backend unreachable" light is not a measurement:
+         * a gateway that has heard no node has never posted anything, so it
+         * has never contacted the backend, so the indicator reports the state
+         * it booted in for ever. A gateway with no field yet is precisely the
+         * one somebody is standing in front of asking why -- and the answer
+         * "it has not tried" is not visible anywhere.
+         *
+         * Only when the spool is empty. With frames waiting, the POST that
+         * carries them is a better test than a probe, and doing both would
+         * just be a second request saying the same thing.
+         */
+        if (esp_timer_get_time() >= next_probe_us) {
+            /* In push-only mode the push itself is the liveness test -- there
+             * is no /api/health to ask, and probing a URL nobody configured
+             * would just log a failure every thirty seconds. */
+            if (push_only)
+                { if (uplink_push_ok_recently()) gwrules_note_uplink_ok(&g_rules, (uint32_t)time(NULL)); }
+            else if (spool_depth() == 0 && uplink_probe_backend())
+                gwrules_note_uplink_ok(&g_rules, (uint32_t)time(NULL));
+            next_probe_us = esp_timer_get_time() +
+                            (int64_t)BACKEND_PROBE_S * 1000000;
+        }
+
+        /*
          * The field's clock, sent on a schedule rather than on demand: a node
          * that missed the last one gets the next without having to ask.
          *
@@ -622,7 +678,7 @@ static void uplink_task(void *arg)
          * asks -- one node per pass, round robin. Twenty-one nodes cost one
          * small request every few seconds rather than twenty-one at once. */
         int known = fieldview_count();
-        if (known > 0) {
+        if (known > 0 && !push_only) {
             fieldview_node_t n;
             poll_cursor = (poll_cursor + 1) % known;
             if (fieldview_get(poll_cursor, &n)) uplink_poll_config(n.addr);
@@ -804,7 +860,16 @@ void app_main(void)
     /* Priorities in the order things must not be missed: a frame arrives once
      * and is gone; an uplink and an SMS can both wait a second. */
     xTaskCreate(radio_task,  "radio",  4096, NULL, 6, NULL);
-    xTaskCreate(uplink_task, "uplink", 8192, NULL, 4, NULL);
+    /*
+     * 16 kB, not 8. This task now opens TLS connections -- both the realtime
+     * push and, since the frame path gained a certificate bundle, the uplink
+     * itself. An mbedTLS handshake with bundle verification wants roughly
+     * twice what plain HTTP does, and 8 kB overflowed the moment an https://
+     * api_url was configured: the gateway rebooted, came up, tried again and
+     * rebooted, with the only clue a stack-overflow line that scrolls past
+     * during boot. Cheap insurance on a chip with 512 kB of SRAM.
+     */
+    xTaskCreate(uplink_task, "uplink", 16384, NULL, 4, NULL);
     xTaskCreate(sms_task,    "sms",    4096, NULL, 3, NULL);
 
     uplink_net_t net;

@@ -1,0 +1,78 @@
+{
+  "model_version": "mineguard-xgboost-future-tilt-v1",
+  "model_type": "XGBRegressor",
+  "dataset_version": "offline-telemetry-v2",
+  "target": "maximum same-node tilt_deg over the next 1 hour",
+  "horizon_hours": 1,
+  "feature_names": [
+    "tilt_deg",
+    "robust_tilt_rate_deg_per_hour",
+    "vibration_rms_mg",
+    "vibration_peak_hz",
+    "temperature_c",
+    "history_count",
+    "temporal_span_hours",
+    "temporal_std_tilt_deg"
+  ],
+  "created_at": "2026-09-09T16:33:54.776163+00:00",
+  "synthetic_training_data": true,
+  "split": {
+    "train": {
+      "samples": 2436,
+      "timestamps": 116
+    },
+    "validation": {
+      "samples": 714,
+      "timestamps": 34
+    },
+    "test": {
+      "samples": 1722,
+      "timestamps": 82
+    }
+  },
+  "parameters": {
+    "n_estimators": 120,
+    "max_depth": 3,
+    "learning_rate": 0.05,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "random_state": 42
+  },
+  "metrics": {
+    "train": {
+      "samples": 2436,
+      "mae": 0.004405400692599166,
+      "rmse": 0.007350213565756339,
+      "r2": 0.91533523427987,
+      "baseline_mae": 0.01073385402256565,
+      "baseline_rmse": 0.015663192288149608,
+      "target_mean": 0.03174350831150225,
+      "target_std": 0.025260887372859617
+    },
+    "validation": {
+      "samples": 714,
+      "mae": 0.00950384523774892,
+      "rmse": 0.019407188631265948,
+      "r2": 0.9112386948316927,
+      "baseline_mae": 0.01623354725650473,
+      "baseline_rmse": 0.02639508272430407,
+      "target_mean": 0.04899018710782155,
+      "target_std": 0.0651404549308217
+    },
+    "test": {
+      "samples": 1722,
+      "mae": 0.02160589903550755,
+      "rmse": 0.059324286314412854,
+      "r2": 0.6100878453972058,
+      "baseline_mae": 0.011145614375501623,
+      "baseline_rmse": 0.014165656318134576,
+      "target_mean": 0.05827993526544734,
+      "target_std": 0.09500558478375794
+    }
+  },
+  "baseline": "persistence: current tilt_deg",
+  "limitations": [
+    "synthetic data only",
+    "no Knothe expected value supplied"
+  ]
+}

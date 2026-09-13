@@ -23,6 +23,8 @@ static const char *TAG = "lis3dh";
 #define REG_CTRL4       0x23
 #define REG_CTRL5       0x24
 #define REG_OUT_X_L     0x28
+#define REG_FIFO_CTRL   0x2E
+#define REG_FIFO_SRC    0x2F
 #define REG_INT1_CFG    0x30
 #define REG_INT1_SRC    0x31
 #define REG_INT1_THS    0x32
@@ -34,7 +36,25 @@ static const char *TAG = "lis3dh";
 /* +/-2 g at 12-bit high resolution: 1 mg per LSB. The finest range the part
  * offers, and the right one -- a tilt sensor never sees more than 1 g. */
 #define MG_PER_LSB      1.0f
-#define SAMPLE_RATE_HZ  100
+
+/*
+ * 400 Hz, not 100.
+ *
+ * The sample rate is the ceiling on what "vibration" can mean here: at 100 Hz
+ * nothing above 50 Hz exists as far as this node is concerned, and the
+ * machinery, blasting and traffic worth hearing on a mine panel live well
+ * above that. Raising it to 400 Hz widens the window to 200 Hz for nothing --
+ * the part draws the same current and the burst gets shorter, not longer.
+ *
+ * The FIFO is what makes it usable. Asking for a sample every 2.5 ms from
+ * software cannot work: vTaskDelay rounds to the FreeRTOS tick, which is
+ * 10 ms here, so the loop would run at 100 Hz no matter what the sensor was
+ * told, and the intervals would jitter by a whole tick either way. The part
+ * fills its own 32-deep FIFO at exactly the ODR, and one burst read empties
+ * it -- uniformly sampled, no jitter, no busy-wait.
+ */
+#define SAMPLE_RATE_HZ  400
+#define FIFO_DEPTH      32
 
 static esp_err_t wr(lis3dh_t *s, uint8_t reg, uint8_t val)
 {
@@ -78,8 +98,8 @@ esp_err_t lis3dh_init(lis3dh_t *s, i2c_master_bus_handle_t bus, uint8_t addr)
     return ESP_ERR_NOT_FOUND;
 
 found:
-    /* 100 Hz, all axes, high-resolution mode. */
-    ESP_ERROR_CHECK(wr(s, REG_CTRL1, 0x57));
+    /* 400 Hz, all axes, high-resolution mode. */
+    ESP_ERROR_CHECK(wr(s, REG_CTRL1, 0x77));
     /*
      * BDU | +/-2 g | high resolution.
      *
@@ -99,7 +119,22 @@ found:
      */
     ESP_ERROR_CHECK(wr(s, REG_CTRL4, 0x88));
     ESP_ERROR_CHECK(wr(s, REG_TEMP_CFG, 0xC0));/* enable the temperature ADC */
-    ESP_ERROR_CHECK(wr(s, REG_CTRL5, 0x40));   /* latch INT1 until read */
+    /*
+     * FIFO_EN (0x40) | LIR_INT1 (0x08).
+     *
+     * The latch bit is the fix to a real bug: this register was being written
+     * 0x40 alone with a comment saying it latched INT1, and it does not --
+     * 0x40 is FIFO_EN and LIR_INT1 is 0x08. So the wake interrupt was never
+     * latched, and a motion pulse shorter than the time the ESP32 took to
+     * look could set INT1 and clear it again unseen. On a node whose entire
+     * fast path is "wake on impact", an interrupt that can un-happen is the
+     * worst possible kind of intermittent.
+     */
+    ESP_ERROR_CHECK(wr(s, REG_CTRL5, 0x48));
+    /* Stream mode: the FIFO keeps the most recent 32 samples and overwrites
+     * the oldest, so a read always returns the window that just ended rather
+     * than one that filled minutes ago and stopped. */
+    ESP_ERROR_CHECK(wr(s, REG_FIFO_CTRL, 0x80));
     vTaskDelay(pdMS_TO_TICKS(20));
 
     s->ready = true;
@@ -136,8 +171,27 @@ esp_err_t lis3dh_read(lis3dh_t *s, lis3dh_sample_t *out, uint8_t n_samples)
     double sum_sq = 0;
     uint8_t got = 0;
 
-    for (uint8_t i = 0; i < n_samples; i++) {
+    if (n_samples > FIFO_DEPTH) n_samples = FIFO_DEPTH;
+
+    /*
+     * Wait for the part to fill its FIFO, then empty it in one go.
+     *
+     * At 400 Hz, n samples take n*2.5 ms to accumulate; a little margin on
+     * top covers the ODR being nominal rather than exact. This is the only
+     * sleep in the function, so the window really is uniformly sampled --
+     * the old loop slept between reads and got the tick rate instead.
+     */
+    wr(s, REG_FIFO_CTRL, 0x00);              /* bypass: clears the FIFO     */
+    wr(s, REG_FIFO_CTRL, 0x80);              /* stream: start filling again */
+    vTaskDelay(pdMS_TO_TICKS(n_samples * 1000 / SAMPLE_RATE_HZ + 10));
+
+    uint8_t level = 0, src = 0;
+    if (rd(s, REG_FIFO_SRC, &src, 1) == ESP_OK) level = src & 0x1F;
+    if (level > n_samples) level = n_samples;
+
+    for (uint8_t i = 0; i < level; i++) {
         uint8_t raw[6];
+        /* Each read of the output registers pops the next FIFO entry. */
         if (rd(s, REG_OUT_X_L, raw, sizeof(raw)) != ESP_OK) continue;
 
         /* 12-bit left-justified in 16. */
@@ -148,7 +202,29 @@ esp_err_t lis3dh_read(lis3dh_t *s, lis3dh_sample_t *out, uint8_t n_samples)
         sx += x; sy += y; sz += z;
         sum_sq += (double)x * x + (double)y * y + (double)z * z;
         got++;
-        vTaskDelay(pdMS_TO_TICKS(1000 / SAMPLE_RATE_HZ));
+    }
+
+    /*
+     * Fall back to timed reads if the FIFO gave us nothing.
+     *
+     * A part that does not do FIFO -- a clone, or one wired through
+     * something that mangles the auto-increment -- would otherwise report
+     * zero vibration and perfect stillness for ever, which is exactly the
+     * failure this system must never produce silently.
+     */
+    if (got == 0) {
+        ESP_LOGW(TAG, "FIFO returned nothing; falling back to timed reads");
+        for (uint8_t i = 0; i < n_samples; i++) {
+            uint8_t raw[6];
+            if (rd(s, REG_OUT_X_L, raw, sizeof(raw)) != ESP_OK) continue;
+            float x = (float)((int16_t)(raw[1] << 8 | raw[0]) >> 4) * MG_PER_LSB;
+            float y = (float)((int16_t)(raw[3] << 8 | raw[2]) >> 4) * MG_PER_LSB;
+            float z = (float)((int16_t)(raw[5] << 8 | raw[4]) >> 4) * MG_PER_LSB;
+            sx += x; sy += y; sz += z;
+            sum_sq += (double)x * x + (double)y * y + (double)z * z;
+            got++;
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
     }
     if (got == 0) {
         ESP_LOGW(TAG, "no samples read");

@@ -69,7 +69,7 @@ static void cmd_help(void)
       "                           bit4 recalibrate (one-shot), bit5 status LED\n"
       "  set offsets <pitch> <roll>   tilt zero-offset, mdeg\n"
       "  set wifi <ssid> <pass>   gateway\n"
-      "  set api <url>            gateway\n"
+      "  set api <url|->          gateway; - selects push-only operation\n"
       "  set mqtt <host|->        gateway; - clears it, back to HTTP\n"
       "  set site <slug>          gateway\n"
       "  set gw-id <id>           gateway\n"
@@ -79,6 +79,9 @@ static void cmd_help(void)
       "  set push-token <tok|->   gateway; bearer token for that endpoint\n"
       "  set led-pin <21|->       gateway; onboard RGB pixel, - = board default\n"
       "  set led-order grb|rgb    only if the boot sweep comes out green/red/blue\n"
+      "  set node-alias <addr> <name>  gateway; display name in the realtime\n"
+      "                           push, e.g. `set node-alias 0x0030 NODE-001`.\n"
+      "                           A name of - restores NODE-<addr>\n"
       "  rftest [dst] [n] [pad]   RF link test: n round trips to dst, each\n"
       "                           carrying pad extra bytes. On a node dst\n"
       "                           defaults to the gateway. Prints loss, RTT\n"
@@ -147,7 +150,17 @@ static bool handle_set(char *args)
         copy_arg(c->wifi_ssid, sizeof(c->wifi_ssid), val);
         copy_arg(c->wifi_pass, sizeof(c->wifi_pass), pass ? pass : "");
     } else if (!strcmp(key, "api")) {
-        copy_arg(c->api_url, sizeof(c->api_url), val);
+        /* "-" clears it, which selects push-only operation: the gateway then
+         * relies on the realtime push alone, drains its spool as it pushes
+         * rather than holding frames for a backend that is not coming, and
+         * stops reporting an absent backend as a failed one. */
+        bool clearing = !strcmp(val, "-");
+        copy_arg(c->api_url, sizeof(c->api_url), clearing ? "" : val);
+        if (clearing)
+            printf("note: push-only mode -- no frame ingest, no config "
+                   "downlink, and the spool drains as it pushes%s\n",
+                   c->push_url[0] ? "" : ". NOTE: no push URL is set either, "
+                                         "so nothing will leave this gateway");
     } else if (!strcmp(key, "mqtt")) {
         /* "-" clears it, which is how a site moves back to HTTP without a
          * factory reset. */
@@ -191,6 +204,22 @@ static bool handle_set(char *args)
             c->led_gpio = (uint8_t)n;
         }
         printf("note: takes effect at the next reboot\n");
+    } else if (!strcmp(key, "node-alias")) {
+        /* `set node-alias 0x0030 NODE-001` -- the value parsed above is the
+         * address, the name is the next token. */
+        char *name = strtok(NULL, " \t");
+        if (!parse_u32(val, &n) || n == 0 || n > 0xFFFF) {
+            printf("ERR address must be 0x0001..0xFFFF\n"); return false;
+        }
+        if (!name) { printf("ERR give a name, or - to clear it\n"); return false; }
+        bool clearing = !strcmp(name, "-");
+        if (!nodecfg_set_alias(c, (uint16_t)n, clearing ? NULL : name)) {
+            printf("ERR no room: %d names already set\n", NODECFG_MAX_ALIASES);
+            return false;
+        }
+        printf("note: 0x%04X %s\n", (unsigned)n,
+               clearing ? "back to its address-derived name"
+                        : "will be pushed under that name");
     } else if (!strcmp(key, "led-order")) {
         if (!strcmp(val, "rgb"))      c->led_order_rgb = 1;
         else if (!strcmp(val, "grb")) c->led_order_rgb = 0;

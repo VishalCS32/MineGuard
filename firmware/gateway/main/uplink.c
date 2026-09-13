@@ -374,6 +374,15 @@ static bool post_json(const char *path, const char *body, char *resp, size_t res
         .method = body ? HTTP_METHOD_POST : HTTP_METHOD_GET,
         .timeout_ms = HTTP_TIMEOUT_MS,
         .disable_auto_redirect = false,
+        /* Without this an https:// api_url fails the handshake and reports a
+         * connect error, which reads as "the server is down" -- so the one
+         * thing that cannot be diagnosed from the log is the one thing that
+         * is wrong. Harmless on a plain http:// URL, where it is never used.
+         *
+         * The bundle rather than a pinned root: this endpoint is whatever
+         * the operator typed, and pinning would mean a firmware flash every
+         * time a certificate authority rotated. */
+        .crt_bundle_attach = esp_crt_bundle_attach,
     };
     esp_http_client_handle_t client = esp_http_client_init(&hc);
     if (!client) return false;
@@ -474,6 +483,22 @@ bool uplink_send_batch(const spool_batch_t *b)
 }
 
 /* ---------------------------------------------------------------- downlink */
+
+bool uplink_push_ok_recently(void)
+{
+    if (s_push_ok == 0) return false;
+    uint32_t now_ms = (uint32_t)(esp_timer_get_time() / 1000);
+    /* Three push intervals. One missed push is a moment of WiFi; three in a
+     * row is the endpoint. */
+    return (now_ms - s_push_last_ms) < (3 * 10000u);
+}
+
+bool uplink_probe_backend(void)
+{
+    if (!uplink_wifi_up()) return false;
+    char resp[128];
+    return post_json("/api/health", NULL, resp, sizeof(resp));
+}
 
 bool uplink_poll_config(uint16_t addr)
 {
