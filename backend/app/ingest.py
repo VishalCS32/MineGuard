@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import math
 from datetime import datetime, timedelta, timezone
+from typing import Any, Mapping, Sequence
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -497,3 +498,223 @@ def _hours_to_threshold(a, thresholds: Thresholds) -> float | None:
     if a.tilt_rate_deg_per_h <= 0 or remaining <= 0:
         return None
     return remaining / a.tilt_rate_deg_per_h
+
+
+async def ingest_json_readings(
+    session: AsyncSession,
+    settings: Settings,
+    readings: Sequence[Mapping[str, Any]],
+    *,
+    site_slug: str | None = None,
+    auto_provision: bool = True,
+) -> IngestResult:
+    """Decode, normalize, and persist JSON telemetry records matching the deployed API schema.
+    
+    Supports single records or batches up to 500 records.
+    Updates baseline, tilt rates, sensor health, and triggers field evaluation.
+    """
+    result = IngestResult()
+    if not readings:
+        return result
+
+    site = (await session.execute(
+        sa.select(sites_t).where(sites_t.c.slug == site_slug).limit(1) if site_slug
+        else sa.select(sites_t).limit(1)
+    )).mappings().first()
+    if site is None:
+        result.rejected += len(readings)
+        result.errors.append("no site configured")
+        return result
+
+    thresholds = _thresholds(settings)
+
+    for d in readings:
+        if not isinstance(d, (dict, Mapping)) or not d.get("node_id"):
+            result.rejected += 1
+            if len(result.errors) < 5:
+                result.errors.append("reading missing node_id")
+            continue
+
+        raw_id = str(d["node_id"]).strip()
+        node = await _node_for_string_id(session, site["id"], raw_id, auto_provision)
+        if node is None:
+            result.rejected += 1
+            if len(result.errors) < 5:
+                result.errors.append(f"unknown node {raw_id}")
+            continue
+
+        # Parse timestamp
+        raw_ts = d.get("timestamp") or d.get("ts") or d.get("time")
+        if isinstance(raw_ts, datetime):
+            when = raw_ts if raw_ts.tzinfo else raw_ts.replace(tzinfo=timezone.utc)
+        elif isinstance(raw_ts, (int, float)):
+            when = datetime.fromtimestamp(float(raw_ts), tz=timezone.utc)
+        elif raw_ts:
+            try:
+                clean_ts = str(raw_ts).replace("Z", "+00:00")
+                when = datetime.fromisoformat(clean_ts)
+            except Exception:
+                when = datetime.now(timezone.utc)
+        else:
+            when = datetime.now(timezone.utc)
+
+        sensor_data = d.get("sensor_data") or {}
+        ori = sensor_data.get("orientation") or {}
+        vib = sensor_data.get("vibration") or {}
+        gps = d.get("gps") or {}
+        comm = d.get("communication") or {}
+
+        # Tilt angles in degrees -> millidegrees
+        pitch_deg = d.get("pitch_deg", ori.get("pitch", 0.0))
+        roll_deg = d.get("roll_deg", ori.get("roll", 0.0))
+        try:
+            pitch_mdeg = int(round(float(pitch_deg or 0.0) * 1000.0))
+            roll_mdeg = int(round(float(roll_deg or 0.0) * 1000.0))
+        except (ValueError, TypeError):
+            pitch_mdeg = roll_mdeg = 0
+
+        # Vibration: m/s^2 -> mg
+        vib_rms = d.get("vib_rms", vib.get("rms"))
+        if vib_rms is not None:
+            try:
+                vib_rms_mg = int(round(float(vib_rms) * 1000.0 / 9.80665))
+            except (ValueError, TypeError):
+                vib_rms_mg = 0
+        else:
+            vib_rms_mg = int(round(float(d.get("vib_rms_mg", vib.get("rms_mg", 0.0)) or 0.0)))
+        vib_peak_hz = float(d.get("vib_peak_hz", vib.get("peak_hz", 0.0)) or 0.0)
+
+        # Temperature
+        temp_c = d.get("temperature_c", sensor_data.get("temperature_c", 25.0))
+        try:
+            temp_c_x100 = int(round(float(temp_c if temp_c is not None else 25.0) * 100.0))
+        except (ValueError, TypeError):
+            temp_c_x100 = 2500
+
+        # Battery
+        vbat_raw = d.get("battery_mv", sensor_data.get("battery_mv", 3900.0))
+        try:
+            vbat_mv = int(round(float(vbat_raw if vbat_raw is not None else 3900.0)))
+        except (ValueError, TypeError):
+            vbat_mv = 3900
+
+        # GPS coordinates & satellites
+        lat = d.get("latitude", gps.get("latitude"))
+        lon = d.get("longitude", gps.get("longitude"))
+        sats = int(d.get("satellites", gps.get("satellites", 0)) or 0)
+        gnss_status = (sats << 2) | (1 if lat is not None else 0)
+
+        # RF
+        rssi_raw = d.get("rssi_dbm", comm.get("rssi_dbm", -70.0))
+        try:
+            rssi = int(round(float(rssi_raw if rssi_raw is not None else -70.0)))
+        except (ValueError, TypeError):
+            rssi = -70
+        snr_raw = d.get("snr_db", comm.get("snr_db", 10.0))
+        try:
+            snr_db = float(snr_raw if snr_raw is not None else 10.0)
+        except (ValueError, TypeError):
+            snr_db = 10.0
+
+        flags = int(d.get("flags", 0) or 0)
+
+        # Baseline calculation
+        first_frame = node["baseline_pitch_mdeg"] is None
+        baseline_pitch = pitch_mdeg if first_frame else node["baseline_pitch_mdeg"]
+        baseline_roll = roll_mdeg if first_frame else node["baseline_roll_mdeg"]
+        baseline_temp = (temp_c_x100 / 100.0) if first_frame else ((node["baseline_temp_c_x100"] or 0) / 100.0)
+
+        a = assess(
+            pitch_mdeg=pitch_mdeg, roll_mdeg=roll_mdeg,
+            vib_rms_mg=vib_rms_mg, thresholds=thresholds,
+            baseline_pitch_mdeg=baseline_pitch,
+            baseline_roll_mdeg=baseline_roll,
+            temp_c=temp_c_x100 / 100.0,
+            baseline_temp_c=baseline_temp,
+            drift_mdeg_per_c=settings.tilt_drift_mdeg_per_c,
+        )
+
+        values = dict(
+            time=when, node_id=node["id"],
+            pitch_mdeg=pitch_mdeg, roll_mdeg=roll_mdeg,
+            tilt_mdeg=a.tilt_deg * 1000.0,
+            vib_rms_mg=vib_rms_mg, vib_peak_hz=vib_peak_hz,
+            temp_c_x100=temp_c_x100, n_samples=1,
+            gnss_status=gnss_status, vbat_mv=vbat_mv,
+            rssi=rssi, snr_db=snr_db, flags=flags,
+            hops=1, seq=0,
+        )
+        insert = (sa.dialects.sqlite.insert if session.bind.dialect.name == "sqlite"
+                  else sa.dialects.postgresql.insert)
+        stmt = insert(telemetry).values(**values)
+        await session.execute(stmt.on_conflict_do_update(
+            index_elements=[telemetry.c.node_id, telemetry.c.time],
+            set_={k: stmt.excluded[k] for k in values if k not in ("node_id", "time")},
+        ))
+
+        node_updates: dict[str, Any] = {"last_seen": when}
+        if first_frame:
+            node_updates.update({
+                "baseline_pitch_mdeg": pitch_mdeg,
+                "baseline_roll_mdeg": roll_mdeg,
+                "baseline_temp_c_x100": temp_c_x100,
+            })
+        if lat is not None and lon is not None and (node["lat"] is None or node["lon"] is None):
+            node_updates.update({
+                "lat": float(lat),
+                "lon": float(lon),
+                "position_source": "gnss",
+            })
+        await session.execute(
+            nodes_t.update().where(nodes_t.c.id == node["id"]).values(**node_updates)
+        )
+        result.accepted += 1
+
+    if result.accepted:
+        try:
+            await _field_pass(session, settings, site, result)
+        except Exception:
+            log.exception("field assessment failed; telemetry retained")
+
+    await session.commit()
+    return result
+
+
+async def _node_for_string_id(session: AsyncSession, site_id: int, raw_id: str, auto_provision: bool):
+    """Find a node by label or address, or auto-provision if allowed."""
+    row = (await session.execute(
+        sa.select(nodes_t).where(nodes_t.c.site_id == site_id, nodes_t.c.label == raw_id)
+    )).mappings().first()
+    if row is not None:
+        return row
+
+    clean = raw_id.upper().removeprefix("NODE-").removeprefix("N-").removeprefix("0X")
+    try:
+        addr = int(clean, 16) if any(c in "ABCDEF" for c in clean) else int(clean)
+    except (ValueError, TypeError):
+        addr = (abs(hash(raw_id)) % 0xFFFE) + 1
+
+    row = (await session.execute(
+        sa.select(nodes_t).where(nodes_t.c.site_id == site_id, nodes_t.c.addr == addr)
+    )).mappings().first()
+    if row is not None or not auto_provision:
+        return row
+
+    while True:
+        exists = (await session.execute(
+            sa.select(nodes_t.c.id).where(nodes_t.c.site_id == site_id, nodes_t.c.addr == addr)
+        )).scalar_one_or_none()
+        if exists is None:
+            break
+        addr = (addr + 1) % 0xFFFE or 1
+
+    await session.execute(nodes_t.insert().values(
+        site_id=site_id, addr=addr, label=raw_id, zone="Unassigned",
+        lat=None, lon=None, x_m=None, y_m=None,
+    ))
+    await session.flush()
+    log.info("auto-provisioned node %s (addr 0x%04X)", raw_id, addr)
+    return (await session.execute(
+        sa.select(nodes_t).where(nodes_t.c.site_id == site_id, nodes_t.c.addr == addr)
+    )).mappings().first()
+

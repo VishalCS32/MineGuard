@@ -117,10 +117,16 @@ async def build_snapshot(session: AsyncSession, settings: Settings,
         history_since,
     )
 
+    registered_positions = {
+        str(n["label"] or f"NODE-{n['addr']:03d}"): {"latitude": n["lat"], "longitude": n["lon"]}
+        for n in node_rows if n["lat"] is not None and n["lon"] is not None
+    }
+
     ml_payload = build_ml_payload(
         list(latest.values()),
         history=history,
         field=field,
+        registered_positions=registered_positions if registered_positions else None,
     )
 
     ml_prediction = await predict(ml_payload)
@@ -157,7 +163,7 @@ async def build_snapshot(session: AsyncSession, settings: Settings,
 
         out_nodes.append({
             "addr": n["addr"],
-            "id": f"{n['addr'] - 0x0F:02d}",
+            "id": f"{n['addr'] - 0x0F:02d}" if n['addr'] >= 0x0F else f"{n['addr']:02d}",
             "label": n["label"],
             "lat": n["lat"], "lon": n["lon"],
             "x": n["x_m"], "y": n["y_m"],
@@ -191,9 +197,33 @@ async def build_snapshot(session: AsyncSession, settings: Settings,
         .limit(8)
     )).mappings().all()
 
+    alerts_list = [_alert_json(a) for a in alert_rows]
+    # Surface ML anti-theft alerts if confirmed by the ML microservice
+    if ml_prediction and isinstance(ml_prediction, dict):
+        anti_theft = ml_prediction.get("anti_theft") or {}
+        if anti_theft.get("alert"):
+            for evt in anti_theft.get("events") or []:
+                if evt.get("alert") or evt.get("confirmed"):
+                    nid = str(evt.get("node_id", "Unknown"))
+                    dist = float(evt.get("distance_from_registered_m", 0.0) or 0.0)
+                    alerts_list.insert(0, {
+                        "id": f"theft-{nid}",
+                        "severity": "critical",
+                        "title": "Hardware Theft Detected",
+                        "nodeId": nid,
+                        "zone": "Security Perimeter",
+                        "ts": int(now.timestamp() * 1000),
+                        "metrics": [
+                            {"label": "Displacement", "value": f"{dist:.1f} m"},
+                            {"label": "Status", "value": "THEFT_CONFIRMED" if evt.get("confirmed") else "SUSPECTED"},
+                        ],
+                    })
+
     live = [n for n in out_nodes if n["online"]]
     reachable = [n for n in live if n["hops"] > 0]
     advance = site["face_advance_m_per_day"] or 12.0
+
+    prediction_series = await _prediction(session, site["id"], out_nodes)
 
     return {
         "t": int(now.timestamp() * 1000),
@@ -201,15 +231,16 @@ async def build_snapshot(session: AsyncSession, settings: Settings,
         "faceX": site["face_x_m"] or 0.0,
         "nodes": out_nodes,
         "links": links,
-        "alerts": [_alert_json(a) for a in alert_rows],
-        "prediction": ml_prediction,
+        "alerts": alerts_list,
+        "prediction": prediction_series,
+        "ml": ml_prediction,
         "kpis": {
             "totalNodes": len(out_nodes),
             "activeNodes": len(live),
             "inactiveNodes": len(out_nodes) - len(live),
-            "totalAlerts": len(alert_rows),
-            "criticalAlerts": sum(1 for a in alert_rows if a["severity"] >= 3),
-            "highAlerts": sum(1 for a in alert_rows if a["severity"] == 2),
+            "totalAlerts": len(alerts_list),
+            "criticalAlerts": sum(1 for a in alerts_list if a["severity"] in ("critical", 3)),
+            "highAlerts": sum(1 for a in alerts_list if a["severity"] in ("high", 2)),
             "maxTiltDeg": max((n["tiltDeg"] for n in live), default=0.0),
             "tiltThresholdDeg": settings.tilt_threshold_deg,
             "maxStrainMmPerM": max((abs(n["strainMmPerM"]) for n in live

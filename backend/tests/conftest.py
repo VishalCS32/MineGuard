@@ -17,6 +17,7 @@ from app.config import get_settings
 async def client(tmp_path, monkeypatch) -> AsyncIterator[AsyncClient]:
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{tmp_path/'test.db'}")
     monkeypatch.setenv("MQTT_HOST", "")
+    monkeypatch.setenv("ML_SERVICE_URL", "")
     get_settings.cache_clear()
     await db_module.dispose_db()
 

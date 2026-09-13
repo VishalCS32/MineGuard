@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from subnet_proto import Config
@@ -15,7 +15,7 @@ from subnet_proto import Config
 from . import broadcaster
 from .config import Settings, get_settings
 from .db import session_dep
-from .ingest import ingest_frames
+from .ingest import ingest_frames, ingest_json_readings
 from .risk import corrected_tilt_mdeg
 from .models import alerts as alerts_t
 from .models import node_configs, nodes as nodes_t, sites as sites_t, telemetry
@@ -372,6 +372,62 @@ async def ingest(body: FrameBatch, session: SessionDep,
     if result.accepted:
         broadcaster.mark_dirty()
     return result.as_dict()
+
+
+@router.post("/v1/telemetry", status_code=202)
+@router.post("/telemetry", status_code=202)
+async def ingest_telemetry_json(
+    session: SessionDep,
+    settings: SettingsDep,
+    body: Any = Body(...),
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Accept the JSON telemetry format pushed by the MineGuard Gateway.
+    
+    Supports a single telemetry record or a batch (up to 500 records).
+    Matches the contract implemented by the deployed API on Render.
+    """
+    docs = body if isinstance(body, list) else [body]
+    if not docs:
+        return {"accepted": 0}
+    if len(docs) > 500:
+        raise HTTPException(413, "at most 500 readings per request")
+
+    for d in docs:
+        if not isinstance(d, dict) or not d.get("node_id"):
+            raise HTTPException(422, "every reading needs a node_id")
+
+    result = await ingest_json_readings(session, settings, docs)
+    if result.accepted:
+        broadcaster.mark_dirty()
+    return {"accepted": result.accepted}
+
+
+@router.post("/sync-deployed")
+async def sync_deployed(
+    session: SessionDep,
+    settings: SettingsDep,
+    deployed_url: str = Query(default="https://mineguard-api.tenant.eu.org"),
+    since_id: int = Query(default=0, ge=0),
+    limit: int = Query(default=1000, ge=1, le=50000),
+) -> dict[str, Any]:
+    """Pull telemetry readings from the deployed API into the local backend database."""
+    import httpx
+    url = f"{deployed_url.rstrip('/')}/api/v1/readings"
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.get(url, params={"since_id": since_id, "limit": limit})
+        resp.raise_for_status()
+        rows = resp.json()
+    if not isinstance(rows, list):
+        raise HTTPException(502, "deployed API did not return a list")
+
+    result = await ingest_json_readings(session, settings, rows)
+    if result.accepted:
+        broadcaster.mark_dirty()
+    return {
+        "synced": result.accepted,
+        "last_id": max((r.get("id", 0) for r in rows), default=since_id),
+    }
 
 
 # ------------------------------------------------------------------- stats
