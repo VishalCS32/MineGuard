@@ -117,6 +117,7 @@ void nodecfg_load(nodecfg_t *out)
     get_str(h, "mqtt",      out->mqtt_host,  sizeof(out->mqtt_host));
     get_str(h, "ap_pass",   out->ap_pass,    sizeof(out->ap_pass));
     get_str(h, "push",      out->push_url,   sizeof(out->push_url));
+    get_str(h, "push_tok",  out->push_token, sizeof(out->push_token));
     get_str(h, "site",      out->site_slug, sizeof(out->site_slug));
     get_str(h, "gw_id",     out->gateway_id, sizeof(out->gateway_id));
     get_str(h, "sms",       out->sms_recipients, sizeof(out->sms_recipients));
@@ -146,6 +147,7 @@ bool nodecfg_save(const nodecfg_t *c)
            && nvs_set_str(h, "mqtt", c->mqtt_host) == ESP_OK
            && nvs_set_str(h, "ap_pass", c->ap_pass) == ESP_OK
            && nvs_set_str(h, "push", c->push_url) == ESP_OK
+           && nvs_set_str(h, "push_tok", c->push_token) == ESP_OK
            && nvs_set_str(h, "site", c->site_slug) == ESP_OK
            && nvs_set_str(h, "gw_id", c->gateway_id) == ESP_OK
            && nvs_set_str(h, "sms", c->sms_recipients) == ESP_OK
@@ -223,6 +225,10 @@ void nodecfg_print(const nodecfg_t *c)
         printf("  api         %s\n", c->api_url);
         printf("  mqtt        %s\n", c->mqtt_host[0] ? c->mqtt_host : "(none: HTTP both ways)");
         printf("  push        %s\n", c->push_url[0] ? c->push_url : "(off)");
+        /* Not printed. `show` output gets pasted into chat logs and issue
+         * trackers, and a bearer token is the one field here that is worth
+         * stealing on its own. */
+        printf("  push token  %s\n", c->push_token[0] ? "(set)" : "(none)");
         printf("  site        %s\n", c->site_slug);
         printf("  gateway id  %s\n", c->gateway_id);
         printf("  sms to      %s\n", c->sms_recipients[0] ? c->sms_recipients : "(none)");

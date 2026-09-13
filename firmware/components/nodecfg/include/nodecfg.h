@@ -27,6 +27,10 @@
 
 #define NODECFG_LABEL_LEN 16
 #define NODECFG_STR_LEN   64
+/* Bearer tokens are generated, not typed, and the hosts that generate them
+ * are not shy: Render's are 40+ characters and Railway's longer. Sized so a
+ * token is never silently truncated into one that will simply 401. */
+#define NODECFG_TOKEN_LEN 128
 
 typedef enum {
     NODE_ROLE_NODE = 0,
@@ -56,6 +60,12 @@ typedef struct {
      * system of record; this one is for anything else that wants the data and
      * has no copy of the codec. */
     char        push_url[NODECFG_STR_LEN];
+    /* Sent as `Authorization: Bearer <token>` on the realtime push, and
+     * nowhere else. An ingest endpoint on the public internet without one is
+     * a database anyone can fill, and fabricated telemetry is worse than none
+     * -- it still draws a line on the chart. Empty means no header, which is
+     * right for a receiver on a private network. */
+    char        push_token[NODECFG_TOKEN_LEN];
     /* WPA2 password for the gateway's own access point, which is how a phone
      * reaches the on-site web UI when there is no site network at all. */
     char        ap_pass[NODECFG_LABEL_LEN];
@@ -117,6 +127,7 @@ void nodecfg_print(const nodecfg_t *cfg);
  *   set mqtt 10.0.0.5          gateway only; empty = HTTP both ways
  *   set ap-pass <8+ chars>     gateway only; guards the on-site web UI
  *   set push https://host/hook gateway only; realtime JSON push, '-' clears
+ *   set push-token <tok|->     gateway only; bearer token for that endpoint
  *   set site jharia
  *   set sms +911234567890,+919876543210
  *   set led-pin 21            gateway only; onboard RGB pixel, '-' = default

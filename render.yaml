@@ -1,0 +1,31 @@
+# Render Blueprint.
+#
+# The telemetry receiver lives in a subdirectory, which is the thing Render
+# cannot guess: pointed at the repo root it finds no Dockerfile, builds
+# nothing, and never gives you a URL. `dockerContext` and `dockerfilePath`
+# say where to look, so this works without setting Root Directory by hand.
+#
+# To use: Render dashboard -> New -> Blueprint -> pick this repo.
+services:
+  - type: web
+    name: mineguard-telemetry
+    runtime: docker
+    plan: free
+    dockerContext: ./services/telemetry-api
+    dockerfilePath: ./services/telemetry-api/Dockerfile
+    # Render restarts anything whose health check fails, which is what you
+    # want for a receiver a gateway is retrying against.
+    healthCheckPath: /health
+    envVars:
+      - key: INGEST_TOKEN
+        # Generated once and kept. Read it from the dashboard -- the gateway
+        # needs the same string. See the note in the service README about the
+        # firmware not sending it yet.
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: "*"
+      # The SQLite file. On a free instance the disk is ephemeral, so this is
+      # erased at every deploy and whenever the instance sleeps -- fine for a
+      # demo. Attach a persistent disk mounted at /data to keep it.
+      - key: DB_PATH
+        value: /data/telemetry.db

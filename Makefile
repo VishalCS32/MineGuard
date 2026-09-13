@@ -13,7 +13,7 @@ PY   := $(VENV)/bin/python
 PIP  := $(VENV)/bin/pip
 
 .DEFAULT_GOAL := help
-.PHONY: help install api gateway web test test-proto test-ml test-backend test-firmware up down logs clean
+.PHONY: help install api gateway telemetry web test test-proto test-ml test-backend test-firmware up down logs clean
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -30,6 +30,10 @@ api:  ## Run the API on http://localhost:8000 (SQLite)
 
 gateway:  ## Stream physics-backed frames into the API over the real protocol
 	cd ml && ../$(VENV)/bin/python -m simulator.virtual_gateway --api http://localhost:8000
+
+telemetry:  ## Run the telemetry receiver on http://localhost:8020
+	cd services/telemetry-api && ../../$(VENV)/bin/uvicorn app:app \
+	  --reload --host 0.0.0.0 --port 8020
 
 web:  ## Run the dashboard on http://localhost:5173
 	cd web && npm run dev

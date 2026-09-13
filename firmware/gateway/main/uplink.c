@@ -566,6 +566,11 @@ bool uplink_push_json(const char *json)
     if (!client) return false;
 
     esp_http_client_set_header(client, "Content-Type", "application/json");
+    if (s_cfg->push_token[0]) {
+        char auth[NODECFG_TOKEN_LEN + 8];
+        snprintf(auth, sizeof(auth), "Bearer %s", s_cfg->push_token);
+        esp_http_client_set_header(client, "Authorization", auth);
+    }
     esp_http_client_set_post_field(client, json, (int)strlen(json));
 
     bool ok = false;
@@ -573,7 +578,15 @@ bool uplink_push_json(const char *json)
     if (err == ESP_OK) {
         int status = esp_http_client_get_status_code(client);
         ok = (status >= 200 && status < 300);
-        if (!ok) ESP_LOGW(TAG, "push endpoint answered HTTP %d", status);
+        /* 401 has exactly one cause and a one-line fix, so say it rather than
+         * leaving somebody to read it as a network fault. */
+        if (status == 401 || status == 403)
+            ESP_LOGW(TAG, "push endpoint rejected our credentials (HTTP %d). "
+                          "%s", status,
+                     s_cfg->push_token[0]
+                        ? "The token is wrong: `set push-token <tok>` / `save`"
+                        : "It wants a bearer token: `set push-token <tok>` / `save`");
+        else if (!ok) ESP_LOGW(TAG, "push endpoint answered HTTP %d", status);
     } else {
         ESP_LOGW(TAG, "push to %s failed: %s", s_cfg->push_url, esp_err_to_name(err));
     }

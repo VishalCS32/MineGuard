@@ -54,9 +54,17 @@ database anyone can fill, and fabricated telemetry is worse than none — it
 still draws a line on the chart. The service logs a warning at startup while
 the token is unset, because forgetting is the normal way this ends up open.
 
-The gateway does not send an `Authorization` header today. Either leave the
-token unset behind a private network, or say the word and I will add header
-support to `uplink_push_json()`.
+The gateway sends it as `Authorization: Bearer <token>`. Set the same string
+on both ends:
+
+```
+set push-token <the token from your host's dashboard>
+save
+```
+
+A mismatch is not silent — the gateway logs the 401 and names the command to
+fix it, rather than leaving it to read as a network fault. `set push-token -`
+clears it for a receiver on a private network.
 
 **Use Postgres if the data matters.** Most hosts give a container an ephemeral
 disk, so a SQLite file is gone at the next deploy.

@@ -76,6 +76,7 @@ static void cmd_help(void)
       "  set sms <+91...,+91...>  gateway\n"
       "  set ap-pass <8+ chars>   gateway; guards the on-site web UI\n"
       "  set push <url|->         gateway; realtime JSON push endpoint\n"
+      "  set push-token <tok|->   gateway; bearer token for that endpoint\n"
       "  set led-pin <21|->       gateway; onboard RGB pixel, - = board default\n"
       "  set led-order grb|rgb    only if the boot sweep comes out green/red/blue\n"
       "  rftest [dst] [n] [pad]   RF link test: n round trips to dst, each\n"
@@ -157,6 +158,19 @@ static bool handle_set(char *args)
         copy_arg(c->gateway_id, sizeof(c->gateway_id), val);
     } else if (!strcmp(key, "push")) {
         copy_arg(c->push_url, sizeof(c->push_url), strcmp(val, "-") ? val : "");
+    } else if (!strcmp(key, "push-token")) {
+        /* "-" clears it, which is how a receiver moves back to open without
+         * a factory reset. */
+        bool clearing = !strcmp(val, "-");
+        if (!clearing && strlen(val) >= NODECFG_TOKEN_LEN) {
+            printf("ERR token is longer than %d characters\n", NODECFG_TOKEN_LEN - 1);
+            return false;
+        }
+        copy_arg(c->push_token, sizeof(c->push_token), clearing ? "" : val);
+        /* Echo the length, not the token: enough to catch a paste that lost
+         * half of itself, without putting the secret in the scrollback. */
+        if (clearing) printf("note: push token cleared; no Authorization header\n");
+        else          printf("note: %u-character token stored\n", (unsigned)strlen(val));
     } else if (!strcmp(key, "ap-pass")) {
         if (strlen(val) < 8) { printf("ERR WPA2 needs 8 characters or more\n"); return false; }
         copy_arg(c->ap_pass, sizeof(c->ap_pass), val);

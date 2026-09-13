@@ -136,6 +136,7 @@ static esp_err_t post_settings(httpd_req_t *req)
     apply_string(root, "gateway_id",s_cfg->gateway_id,sizeof(s_cfg->gateway_id));
     apply_string(root, "sms",       s_cfg->sms_recipients, sizeof(s_cfg->sms_recipients));
     apply_string(root, "push_url",  s_cfg->push_url,  sizeof(s_cfg->push_url));
+    apply_string(root, "push_token", s_cfg->push_token, sizeof(s_cfg->push_token));
 
     const cJSON *ap = cJSON_GetObjectItem(root, "ap_pass");
     if (cJSON_IsString(ap) && strlen(ap->valuestring) >= 8)

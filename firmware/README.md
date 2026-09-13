@@ -184,6 +184,7 @@ set gw-id gw-01
 set sms  +919876543210,+911234567890
 set ap-pass <8+ chars>        guards the on-site web UI -- change it
 set push https://host/hook    optional realtime JSON feed; '-' clears it
+set push-token <tok|->        bearer token for that endpoint, if it wants one
 set led-pin 48                only if the onboard RGB pixel is not on GPIO21
 set led-order rgb             only if the boot sweep comes out green/red/blue
 save
